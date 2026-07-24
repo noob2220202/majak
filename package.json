@@ -1,0 +1,25 @@
+{
+  "name": "cheongiwa",
+  "private": true,
+  "version": "0.1.0",
+  "description": "청기와 — 한국 전통 컨셉 온라인 리치마작 웹게임",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @cheongiwa/server --filter @cheongiwa/client run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r --if-present run test",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --if-present run typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0"
+  }
+}

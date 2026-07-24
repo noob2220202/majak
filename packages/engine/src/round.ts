@@ -741,7 +741,9 @@ function openReactionWindow(state: RoundState, kind: 'discard', from: Seat, tile
 
     if (!p.riichi && canCall) {
       const sameKind = p.hand.filter((t) => kindOfTile(t) === tileKind);
-      if (sameKind.length >= 2) list.push({ type: 'pon' });
+      // 퐁 후에는 울어간 종류를 바로 버릴 수 없으므로, 다른 종류가 남아야 제공
+      const othersCount = p.hand.length - sameKind.length;
+      if (sameKind.length >= 2 && othersCount >= 1) list.push({ type: 'pon' });
       if (sameKind.length >= 3 && state.totalKans < 4) list.push({ type: 'daiminkan' });
 
       // 치: 상가의 타패만
@@ -757,7 +759,17 @@ function openReactionWindow(state: RoundState, kind: 'discard', from: Seat, tile
         for (const [a, b] of candidates) {
           const ta = pick(a);
           const tb = pick(b);
-          if (ta !== undefined && tb !== undefined) combos.push([ta, tb]);
+          if (ta === undefined || tb === undefined) continue;
+          // 치 후 쿠이카에 금지 종류만 남으면 그 조합은 제공하지 않는다
+          const start = Math.min(a, b, tileKind);
+          const calledPos = tileKind - start;
+          const forbidden = new Set<TileKind>([tileKind]);
+          if (calledPos === 0 && start % 9 <= 5) forbidden.add(start + 3);
+          if (calledPos === 2 && start % 9 >= 1) forbidden.add(start - 1);
+          const hasLegalDiscard = p.hand.some(
+            (t) => t !== ta && t !== tb && !forbidden.has(kindOfTile(t)),
+          );
+          if (hasLegalDiscard) combos.push([ta, tb]);
         }
         if (combos.length > 0) list.push({ type: 'chi', combos });
       }

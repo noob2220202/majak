@@ -286,6 +286,35 @@ describe('울기와 창깡 (§2.3)', () => {
     expect(state.totalKans).toBe(0);
   });
 
+  it('치 후 버릴 패가 전부 쿠이카에 금지면 그 치는 제공하지 않는다 (교착 방지)', () => {
+    const state = rig({
+      hands: [
+        '3m159m19p159s55z67z',
+        '123p456p789p3456m',
+        '2358m2358p2358s3z',
+        '2469m2469p2469s4z',
+      ],
+      draws: ['6z'],
+    });
+    // s1을 3부로 상태로 수술: 손패 [3m,4m,5m,6m]만 남긴다
+    const p1 = state.players[1];
+    const mTiles = p1.hand.filter((t) => kindOfTile(t) < 9);
+    const pTiles = p1.hand.filter((t) => kindOfTile(t) >= 9);
+    p1.melds = [0, 3, 6].map((i) => ({
+      type: 'chi',
+      tiles: [pTiles[i], pTiles[i + 1], pTiles[i + 2]] as [number, number, number],
+      calledTileId: pTiles[i] as number,
+      from: 3 as Seat,
+    }));
+    p1.hand = mTiles;
+    p1.handRevision++;
+
+    discardKind(state, 0, '3m');
+    // [4m,5m] 치를 하면 남는 [3m,6m]이 전부 금지 → 치 제공 금지
+    const offers = reactionOffers(state);
+    expect(offers.get(1)?.some((o) => o.type === 'chi')).not.toBe(true);
+  });
+
   it('쿠이카에 금지: 같은 종류·스지 반대끝 즉시 타패 불가', () => {
     const state = rig({
       hands: [

@@ -46,3 +46,14 @@ export {
 
 export type { Rng } from './rng';
 export { createRng, nextInt, shuffleInPlace } from './rng';
+
+export {
+  standardShanten,
+  chiitoiShanten,
+  kokushiShanten,
+  shanten,
+  isAgariShape,
+  winningKinds,
+  isTenpai,
+  usefulKinds,
+} from './shanten';

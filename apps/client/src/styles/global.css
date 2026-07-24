@@ -1,0 +1,54 @@
+@import 'tailwindcss';
+
+/* ── 디자인 토큰 (PLAN.md §4.1 — 오방색·단청 기반) ─────────────── */
+:root {
+  --ink: #191b21;
+  --giwa: #2c3040;
+  --night: #101528;
+  --felt: #1e4b3f;
+  --felt-edge: #14332b;
+  --hanji: #f4eddd;
+  --dan-red: #9e3b31;
+  --dan-orange: #d45d3a;
+  --dan-blue: #33527e;
+  --dan-green: #3f7e5f;
+  --gold: #c8a24b;
+  --gold-hi: #e6c87a;
+  --seal: #c03b2e;
+
+  --ease-base: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 토큰 → Tailwind 유틸리티 매핑 (bg-giwa, text-hanji 등) */
+@theme inline {
+  --color-ink: var(--ink);
+  --color-giwa: var(--giwa);
+  --color-night: var(--night);
+  --color-felt: var(--felt);
+  --color-felt-edge: var(--felt-edge);
+  --color-hanji: var(--hanji);
+  --color-dan-red: var(--dan-red);
+  --color-dan-orange: var(--dan-orange);
+  --color-dan-blue: var(--dan-blue);
+  --color-dan-green: var(--dan-green);
+  --color-gold: var(--gold);
+  --color-gold-hi: var(--gold-hi);
+  --color-seal: var(--seal);
+
+  /* 폰트 로컬 번들은 Phase 4 — 그 전까지는 시스템 폴백 (CDN 미사용) */
+  --font-serif-kr: 'Noto Serif KR', 'Source Han Serif K', 'AppleMyungjo', serif;
+  --font-sans-kr:
+    'Pretendard Variable', 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    sans-serif;
+}
+
+body {
+  font-family: var(--font-sans-kr);
+  background-color: var(--night);
+  color: var(--hanji);
+  min-height: 100dvh;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

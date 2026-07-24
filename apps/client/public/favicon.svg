@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- 패 뒷면 모티프: 쪽빛 바탕 + 금박 수막새 (자체 제작 오리지널) -->
+  <rect x="2" y="2" width="28" height="28" rx="6" fill="#243B6B"/>
+  <circle cx="16" cy="16" r="7.5" fill="none" stroke="#C8A24B" stroke-width="2.4"/>
+  <circle cx="16" cy="16" r="2.2" fill="#C8A24B"/>
+</svg>

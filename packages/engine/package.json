@@ -1,0 +1,22 @@
+{
+  "name": "@cheongiwa/engine",
+  "version": "0.1.0",
+  "description": "순수 TS 리치마작 엔진 — 런타임 의존성 0, 결정론적 (서버·클라 공용)",
+  "type": "module",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}

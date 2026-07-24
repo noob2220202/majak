@@ -17,6 +17,7 @@
     "sim": "tsx scripts/simulate.ts"
   },
   "devDependencies": {
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
   }

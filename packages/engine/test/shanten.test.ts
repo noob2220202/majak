@@ -142,8 +142,10 @@ function buildWinningHands(): WinHand[] {
       for (let c = b; c < n; c++)
         for (let d = c; d < n; d++) {
           const base = new Array<number>(TILE_KIND_COUNT).fill(0);
-          for (const st of [setTypes[a], setTypes[b], setTypes[c], setTypes[d]]) {
-            for (let k = 0; k < TILE_KIND_COUNT; k++) base[k] += (st as number[])[k] as number;
+          for (const st of [setTypes[a], setTypes[b], setTypes[c], setTypes[d]] as number[][]) {
+            for (let k = 0; k < TILE_KIND_COUNT; k++) {
+              base[k] = (base[k] as number) + (st[k] as number);
+            }
           }
           if (base.some((x) => x > 4)) continue;
           for (const pk of UNIVERSE) {

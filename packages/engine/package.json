@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sim": "tsx scripts/simulate.ts"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

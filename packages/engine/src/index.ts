@@ -57,3 +57,40 @@ export {
   isTenpai,
   usefulKinds,
 } from './shanten';
+
+export type { Meld } from './meld';
+export { isKan, breaksConcealment, meldKind, meldTileKinds } from './meld';
+
+export type {
+  HandSet,
+  WaitKind,
+  StandardDecomposition,
+  ChiitoiDecomposition,
+  KokushiDecomposition,
+  Decomposition,
+} from './decompose';
+export {
+  enumerateStandard,
+  enumerateChiitoi,
+  enumerateKokushi,
+  enumerateDecompositions,
+} from './decompose';
+
+export type { WinInput, YakuEntry, YakumanEntry, YakuResult, EvalGroup } from './yaku';
+export {
+  isMenzen,
+  buildGroups,
+  allTileCounts,
+  evaluateStandard,
+  evaluateChiitoi,
+  evaluateKokushi,
+  evaluateDecomposition,
+} from './yaku';
+
+export { calculateFu } from './fu';
+
+export type { LimitName, BasePointsResult, TsumoPayments } from './score';
+export { basePointsOf, yakumanBasePoints, ronPoints, tsumoPayments } from './score';
+
+export type { AgariInput, AgariResult } from './agari';
+export { evaluateWin, kanCount } from './agari';

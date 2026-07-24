@@ -12,3 +12,4 @@
 - [Phase 0] 패 표기는 mpsz 표기법(`1m~9m / 1p~9p / 1s~9s / 1z~7z`, 적5는 `0m·0p·0s`)을 로그·테스트 픽스처 표준으로 사용.
 - [Phase 0] 프로토콜 버전 상수 `PROTOCOL_VERSION = 1`에서 시작 — 이벤트·스냅샷 스키마의 파괴적 변경마다 +1.
 - [Phase 0] 패키지 스코프는 `@cheongiwa/*` (engine · protocol · server · client).
+- [방향 개정 2026-07-24] 사용자 결정으로 캐릭터를 순수 비주얼 요소(과금·가챠·판정 영향 없음)로 도입 — 상세는 `ART-DIRECTION.md`. PLAN.md §0의 "캐릭터 없음"은 이 범위에서 개정됨.

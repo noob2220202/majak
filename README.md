@@ -44,6 +44,7 @@ docker run --rm -p 8787:8787 cheongiwa
 ## 문서
 
 - [PLAN.md](./PLAN.md) — 전체 개발 계획서 (룰 사양 · 디자인 시스템 · 로드맵)
+- [ART-DIRECTION.md](./ART-DIRECTION.md) — 캐릭터·한복 비주얼 방향 (PLAN 부록)
 - [RULES.md](./RULES.md) — 구현된 룰 최종 요약 (유저용)
 - [ASSUMPTIONS.md](./ASSUMPTIONS.md) — 문서에 없어서 임의 결정한 사항
 - [ATTRIBUTIONS.md](./ATTRIBUTIONS.md) — 외부 에셋 출처·라이선스

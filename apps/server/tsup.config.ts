@@ -9,7 +9,7 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   shims: true,
-  noExternal: [/.*/],
-  // ws의 선택적 네이티브 가속 모듈 — 없어도 동작 (try/catch require)
-  external: ['bufferutil', 'utf-8-validate'],
+  // 전부 번들하되 네이티브 모듈(better-sqlite3)만 제외 (noExternal이 external보다 우선하므로 부정 전방탐색 사용)
+  noExternal: [/^(?!better-sqlite3$)/],
+  external: ['better-sqlite3', 'bufferutil', 'utf-8-validate'],
 });

@@ -5,3 +5,4 @@ packages:
 # postinstall 스크립트 허용 목록 (pnpm 10은 기본 차단)
 onlyBuiltDependencies:
   - esbuild
+  - better-sqlite3

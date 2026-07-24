@@ -2,7 +2,7 @@
 
 한국 전통 미학을 입힌 온라인 4인 리치마작 웹게임. 전체 개발 계획은 [PLAN.md](./PLAN.md)를 참고하세요.
 
-현재 상태: **Phase 0 — 스캐폴드** (모노레포·서버·클라 골격, 플레이스홀더 로비)
+현재 상태: **Phase 2 — 서버와 프로토콜 완료** (엔진 + 온라인 대국 서버, 클라 UI는 Phase 3)
 
 ## 개발 실행
 
@@ -34,11 +34,25 @@ apps/server       Fastify + Socket.IO 게임 서버 (정적 서빙 · 헬스체�
 apps/client       React 18 + Vite 클라이언트
 ```
 
+## 터미널 대국 데모 (Phase 2)
+
+서버를 켠 뒤 (`pnpm dev` 또는 빌드 후 `pnpm --filter @cheongiwa/server start`):
+
+```sh
+cd apps/server
+npx tsx scripts/play-cli.ts --nick 갑 --create          # 방 코드가 출력됨, Enter로 시작
+npx tsx scripts/play-cli.ts --nick 을 --join <코드>     # 터미널 2~4
+npx tsx scripts/play-cli.ts --nick 혼자 --practice      # 봇 3인과 즉시 대국
+```
+
+`--auto`(전자동) · `--quick`(매칭 큐) · `--token <값>`(재접속). 서버 환경변수:
+`PORT` `DB_PATH` `STATIC_DIR` `TURN_BASE_MS` `RESERVE_MS` `RESULT_DELAY_MS` `BOT_DELAY_MS`
+
 ## 프로덕션 (단일 프로세스 서빙)
 
 ```sh
 docker build -t cheongiwa .
-docker run --rm -p 8787:8787 cheongiwa
+docker run --rm -p 8787:8787 -v cheongiwa-data:/app/data cheongiwa
 ```
 
 ## 문서

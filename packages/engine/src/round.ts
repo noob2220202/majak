@@ -71,6 +71,8 @@ export interface WinEntry {
   readonly seat: Seat;
   /** 론이면 방총자, 쯔모면 null */
   readonly from: Seat | null;
+  /** 화료패 실물 id (더블론이면 두 화료자가 같은 id 공유) */
+  readonly winningTileId: TileId;
   readonly agari: AgariResult;
   /** 이 화료로 얻은 점수 (공탁·본장 포함) */
   readonly gained: number;
@@ -532,7 +534,9 @@ export function applyAction(state: RoundState, seat: Seat, action: RoundAction):
       const result = winCheck(state, seat, p.drawnTile as TileId, 'tsumo', {
         rinshan: state.rinshanDraw,
       }) as AgariResult;
-      finishWithWins(state, [{ seat, from: null, agari: result }]);
+      finishWithWins(state, [
+        { seat, from: null, agari: result, tileId: p.drawnTile as TileId },
+      ]);
       return;
     }
     case 'ankan': {
@@ -893,6 +897,7 @@ function resolveReactions(state: RoundState): void {
       seat,
       from: window.from,
       agari: winCheck(state, seat, window.tileId, 'ron', flags) as AgariResult,
+      tileId: window.tileId,
     }));
     finishWithWins(state, wins, {
       tileId: window.tileId,
@@ -1116,7 +1121,7 @@ function resolveExhaustiveDraw(state: RoundState): void {
 
 function finishWithWins(
   state: RoundState,
-  rawWins: Array<{ seat: Seat; from: Seat | null; agari: AgariResult }>,
+  rawWins: Array<{ seat: Seat; from: Seat | null; agari: AgariResult; tileId: TileId }>,
   ronTile?: { tileId: TileId; source: 'discard' | 'kan' },
 ): void {
   // 더블론: 방총자 기준 반시계로 가까운 순서 정렬 (§2.2)
@@ -1141,7 +1146,7 @@ function finishWithWins(
 
   const entries: WinEntry[] = [];
   wins.forEach((win, index) => {
-    const { seat, from, agari } = win;
+    const { seat, from, agari, tileId } = win;
     const dealerWin = seat === state.dealer;
     const gainedBefore = state.scores[seat] as number;
 
@@ -1213,6 +1218,7 @@ function finishWithWins(
     entries.push({
       seat,
       from,
+      winningTileId: tileId,
       agari,
       gained: (state.scores[seat] as number) - gainedBefore,
       pao,

@@ -22,3 +22,13 @@ export interface Tile {
   /** 적도라(적5) 여부 */
   readonly red: boolean;
 }
+
+/** 좌석 인덱스. 0 = 기가(起家, 동1국 시작 시 동). 시계 반대 방향으로 0→1→2→3. */
+export type Seat = 0 | 1 | 2 | 3;
+
+export const SEATS: readonly Seat[] = [0, 1, 2, 3];
+
+/** 다음 좌석 (반시계 = 턴 순서) */
+export function nextSeat(seat: Seat): Seat {
+  return ((seat + 1) % 4) as Seat;
+}

@@ -41,4 +41,8 @@ describe('RuleSettingsSchema', () => {
     expect(RuleSettingsSchema.safeParse({ renpuuJantouFu: 2 }).success).toBe(true);
     expect(RuleSettingsSchema.safeParse({ renpuuJantouFu: 3 }).success).toBe(false);
   });
+
+  it('스키마 기본값은 엔진 DEFAULT_RULES와 항상 일치한다 (단일 정본)', () => {
+    expect(RuleSettingsSchema.parse({})).toEqual(DEFAULT_RULES);
+  });
 });

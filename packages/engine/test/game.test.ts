@@ -119,10 +119,12 @@ describe('종료 조건 (§2.10)', () => {
     expect(game.phase).toBe('ended');
     expect(game.endReason).toBe('finished');
     const standings = game.standings ?? [];
-    // 남은 공탁 2개는 1위(s1)에게
-    expect(standings[0]).toMatchObject({ seat: 1, rawScore: 43000, uma: 15, finalPoints: 58000 });
+    // 남은 공탁 2개는 1위(s1)에게 → 43,000점. 소프트 = (43000−25000)/1000 + 15 = 33
+    expect(standings[0]).toMatchObject({ seat: 1, rawScore: 43000, uma: 15, finalPoints: 33 });
     expect(standings.map((s) => s.seat)).toEqual([1, 3, 0, 2]);
     expect(standings.map((s) => s.uma)).toEqual([15, 5, -5, -15]);
+    // 소프트 점수 총합은 0
+    expect(standings.reduce((sum, s) => sum + s.finalPoints, 0)).toBeCloseTo(0);
   });
 
   it('동점은 기가순 (앉은 순서 우선)', () => {

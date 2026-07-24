@@ -22,7 +22,7 @@ export interface FinalStanding {
   readonly rank: number;
   readonly rawScore: number;
   readonly uma: number;
-  /** rawScore + uma×1000 (공탁 잔여는 1위에 귀속 후) */
+  /** 소프트 점수 = (rawScore − 25,000)/1000 + 우마 (오카 없음). 전체 합 0. */
   readonly finalPoints: number;
 }
 
@@ -195,12 +195,8 @@ function endGame(state: GameState, reason: GameEndReason): void {
   state.standings = order.map((seat, index) => {
     const uma = state.rules.uma[index] as number;
     const raw = scores[seat] as number;
-    return {
-      seat,
-      rank: index + 1,
-      rawScore: raw,
-      uma,
-      finalPoints: raw + uma * 1000,
-    };
+    // 소프트 점수 (오카 없음, §2.2): (점수 − 시작점)/1000 + 우마. 전체 합은 0.
+    const finalPoints = Math.round(((raw - STARTING_POINTS) / 1000 + uma) * 10) / 10;
+    return { seat, rank: index + 1, rawScore: raw, uma, finalPoints };
   });
 }

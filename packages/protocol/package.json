@@ -1,0 +1,26 @@
+{
+  "name": "@cheongiwa/protocol",
+  "version": "0.1.0",
+  "description": "서버·클라 공유 타입 — 이벤트, 상태 스냅샷, 룰 설정 스키마 (zod)",
+  "type": "module",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cheongiwa/engine": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}

@@ -71,8 +71,15 @@ function suitDistance(vec: readonly number[]): Uint8Array {
   return table;
 }
 
+const honorDistCache = new Map<number, Uint8Array>();
+
 /** 자패 7종에서 커쯔 s개 + 머리 p개를 만들 최소 추가 장수 (같은 종류에 커쯔+머리 중복 불가) */
 function honorDistance(counts: readonly number[]): Uint8Array {
+  let key = 0;
+  for (let k = HONOR_START; k < TILE_KIND_COUNT; k++) key = key * 5 + (counts[k] as number);
+  const cached = honorDistCache.get(key);
+  if (cached) return cached;
+
   let dp = new Uint8Array(10).fill(INF);
   dp[0] = 0;
   for (let k = HONOR_START; k < TILE_KIND_COUNT; k++) {
@@ -98,6 +105,7 @@ function honorDistance(counts: readonly number[]): Uint8Array {
     }
     dp = next;
   }
+  honorDistCache.set(key, dp);
   return dp;
 }
 
@@ -118,24 +126,30 @@ function assertHandSize(counts: readonly number[], meldCount: number): number {
   return total;
 }
 
+// 결합 DP 스크래치 버퍼 (단일 스레드 전제 — 재진입 없음)
+const scratchVec = new Array<number>(9);
+const scratchA = new Uint8Array(10);
+const scratchB = new Uint8Array(10);
+
 /** 일반형(4면자 1머리) 샹텐 — 부족 장수 최소화 DP (정확) */
 export function standardShanten(counts: readonly number[], meldCount = 0): number {
   assertHandSize(counts, meldCount);
   const targetSets = 4 - meldCount;
 
-  const vec = new Array<number>(9);
-  const tables: Uint8Array[] = [];
-  for (let s = 0; s < 3; s++) {
-    for (let i = 0; i < 9; i++) vec[i] = counts[s * 9 + i] as number;
-    tables.push(suitDistance(vec));
-  }
-  tables.push(honorDistance(counts));
-
-  // 그룹 결합: dp[s][p] = 최소 추가 장수
-  let dp = new Uint8Array(10).fill(INF);
+  let dp = scratchA;
+  let next = scratchB;
+  dp.fill(INF);
   dp[0] = 0;
-  for (const table of tables) {
-    const next = new Uint8Array(10).fill(INF);
+
+  for (let g = 0; g < 4; g++) {
+    let table: Uint8Array;
+    if (g < 3) {
+      for (let i = 0; i < 9; i++) scratchVec[i] = counts[g * 9 + i] as number;
+      table = suitDistance(scratchVec) as Uint8Array;
+    } else {
+      table = honorDistance(counts);
+    }
+    next.fill(INF);
     for (let s = 0; s <= 4; s++) {
       for (let p = 0; p <= 1; p++) {
         const cur = dp[s * 2 + p] as number;
@@ -150,7 +164,9 @@ export function standardShanten(counts: readonly number[], meldCount = 0): numbe
         }
       }
     }
+    const tmp = dp;
     dp = next;
+    next = tmp;
   }
 
   const needed = dp[targetSets * 2 + 1] as number;

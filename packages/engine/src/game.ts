@@ -136,12 +136,9 @@ export function advanceGame(state: GameState, options: AdvanceOptions = {}): voi
   }
 
   // 아가리야메 (§2.10): 오라스(또는 서든데스 각 국)에서 친이 화료/텐파이 유국 + 단독 1위
+  // (도중유국은 해당 없음)
   const dealerKeeps =
-    result.type === 'win'
-      ? result.wins.some((w) => w.seat === dealer)
-      : result.type === 'exhaustive'
-        ? (result.tenpai[dealer] as boolean)
-        : true;
+    result.type === 'win' || result.type === 'exhaustive' ? result.dealerRepeats : false;
   if (
     state.rules.agariYame &&
     (isAllLast || inSuddenDeath) &&

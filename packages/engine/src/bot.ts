@@ -24,12 +24,11 @@ export interface Bot {
   chooseReaction(state: RoundState, seat: Seat): RoundAction;
 }
 
-function handKindsAfterDiscard(state: RoundState, seat: Seat, discard: TileId): TileKind[] {
+function handCountsWithDrawn(state: RoundState, seat: Seat): number[] {
   const p = state.players[seat];
-  const all = [...p.hand, ...(p.drawnTile !== null ? [p.drawnTile] : [])];
-  const idx = all.indexOf(discard);
-  all.splice(idx, 1);
-  return all.map(kindOfTile);
+  const kinds = p.hand.map(kindOfTile);
+  if (p.drawnTile !== null) kinds.push(kindOfTile(p.drawnTile));
+  return countsFromKinds(kinds);
 }
 
 function riichiThreats(state: RoundState, seat: Seat): Seat[] {
@@ -47,14 +46,10 @@ function genbutsuKinds(state: RoundState, threats: Seat[]): Set<TileKind> {
 /** 타패 평가: [샹텐, 유효패 수(음수로 클수록 좋음), 고립도] 사전식 최소화 */
 function pickDiscard(state: RoundState, seat: Seat, pool: readonly TileId[]): TileId {
   const p = state.players[seat];
+  const melds = p.melds.length;
   const threats = riichiThreats(state, seat);
-  const currentShanten = shanten(
-    countsFromKinds([
-      ...p.hand.map(kindOfTile),
-      ...(p.drawnTile !== null ? [kindOfTile(p.drawnTile)] : []),
-    ]),
-    p.melds.length,
-  );
+  const counts = handCountsWithDrawn(state, seat);
+  const currentShanten = shanten(counts, melds);
 
   // 수비 모드: 리치자가 있고 2샹텐 이상이면 현물 우선
   if (threats.length > 0 && currentShanten >= 2) {
@@ -65,15 +60,22 @@ function pickDiscard(state: RoundState, seat: Seat, pool: readonly TileId[]): Ti
     }
   }
 
+  // 같은 종류는 결과가 같으므로 종류당 1장만 평가 (id 최솟값)
+  const byKind = new Map<TileKind, TileId>();
+  for (const t of pool) {
+    const k = kindOfTile(t);
+    const cur = byKind.get(k);
+    if (cur === undefined || t < cur) byKind.set(k, t);
+  }
+
   let best: TileId = pool[0] as TileId;
   let bestKey: [number, number, number, number] = [99, 99, 99, 999];
-  for (const t of [...pool].sort((a, b) => kindOfTile(a) - kindOfTile(b) || a - b)) {
-    const kinds = handKindsAfterDiscard(state, seat, t);
-    const counts = countsFromKinds(kinds);
-    const s = shanten(counts, state.players[seat].melds.length);
-    // 텐파이 부근에서만 유효패 수 비교 (성능)
-    const ukeire = s <= 2 ? -usefulKinds(counts, state.players[seat].melds.length).length : 0;
-    const k = kindOfTile(t);
+  for (const [k, tileId] of [...byKind.entries()].sort((a, b) => a[0] - b[0])) {
+    counts[k] = (counts[k] as number) - 1;
+    const s = shanten(counts, melds);
+    // 텐파이 직전에서만 유효패 수 비교 (성능)
+    const ukeire = s <= 1 ? -usefulKinds(counts, melds).length : 0;
+    counts[k] = (counts[k] as number) + 1;
     const isolation = isYaochuu(k) ? 0 : 1; // 요구패 먼저 정리
     const key: [number, number, number, number] = [s, ukeire, isolation, k];
     if (
@@ -83,7 +85,7 @@ function pickDiscard(state: RoundState, seat: Seat, pool: readonly TileId[]): Ti
           (key[1] === bestKey[1] &&
             (key[2] < bestKey[2] || (key[2] === bestKey[2] && key[3] < bestKey[3])))))
     ) {
-      best = t;
+      best = tileId;
       bestKey = key;
     }
   }

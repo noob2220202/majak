@@ -54,6 +54,10 @@ export interface PlayerState {
   /** 첫 타패를 이미 했는가 (더블리치·천화·지화·구종구패 판정) */
   hasDiscarded: boolean;
   hasDrawn: boolean;
+  /** 손패(13장 상태) 변경 카운터 — 대기패 캐시 무효화용 (파생 상태) */
+  handRevision: number;
+  /** 대기패 캐시 (파생 상태 — 직렬화 불필요) */
+  waitsCache: { revision: number; waits: TileKind[] } | null;
 }
 
 export type AbortiveReason =
@@ -214,6 +218,8 @@ export function startRound(config: RoundConfig): RoundState {
     riichiFuriten: false,
     hasDiscarded: false,
     hasDrawn: false,
+    handRevision: 0,
+    waitsCache: null,
   })) as unknown as RoundState['players'];
 
   const state: RoundState = {
@@ -268,7 +274,10 @@ function handCounts(p: PlayerState, includeDrawn: boolean): number[] {
 }
 
 function currentWaits(p: PlayerState): TileKind[] {
-  return winningKinds(handCounts(p, false), p.melds.length);
+  if (p.waitsCache && p.waitsCache.revision === p.handRevision) return p.waitsCache.waits;
+  const waits = winningKinds(handCounts(p, false), p.melds.length);
+  p.waitsCache = { revision: p.handRevision, waits };
+  return waits;
 }
 
 /** 후리텐 (§2.5): 자기 버림패 + 동순 + 리치 영구 */
@@ -397,21 +406,24 @@ export function turnChoices(state: RoundState): TurnChoices {
     if (afterCall) discards = discards.filter((t) => !isKuikaeForbidden(p, t));
   }
 
-  // 쯔모 화료
+  // 쯔모 화료 (대기패 캐시로 사전 필터)
   const canTsumo =
     p.drawnTile !== null &&
+    currentWaits(p).includes(kindOfTile(p.drawnTile)) &&
     winCheck(state, seat, p.drawnTile, 'tsumo', { rinshan: state.rinshanDraw }) !== null;
 
-  // 리치 (§2.4)
+  // 리치 (§2.4) — 14장 샹텐이 0 이하일 때만 후보 탐색
   const riichiDiscards: TileId[] = [];
   if (
     !p.riichi &&
     !afterCall &&
+    p.drawnTile !== null &&
     p.melds.every((m) => m.type === 'ankan') &&
     (state.scores[seat] as number) >= RIICHI_DEPOSIT &&
-    state.wall.liveRemaining >= 4
+    state.wall.liveRemaining >= 4 &&
+    shanten(handCounts(p, true), p.melds.length) <= 0
   ) {
-    const all = [...p.hand, ...(p.drawnTile !== null ? [p.drawnTile] : [])];
+    const all = [...p.hand, p.drawnTile];
     // 종류 단위로 텐파이 유지 여부를 판정하고, 통과 종류의 모든 실물 패를 후보로
     const passingKinds = new Set<TileKind>();
     const checked = new Set<TileKind>();
@@ -420,7 +432,7 @@ export function turnChoices(state: RoundState): TurnChoices {
       if (checked.has(k)) continue;
       checked.add(k);
       const remaining = removeOne(all, t).map(kindOfTile);
-      if (isTenpai(countsFromKinds(remaining), p.melds.length)) passingKinds.add(k);
+      if (shanten(countsFromKinds(remaining), p.melds.length) === 0) passingKinds.add(k);
     }
     for (const t of all) {
       if (passingKinds.has(kindOfTile(t))) riichiDiscards.push(t);
@@ -548,7 +560,7 @@ function performDiscard(state: RoundState, seat: Seat, tileId: TileId, riichi: b
   const p = player(state, seat);
   const tsumogiri = p.drawnTile === tileId;
 
-  // 손패 갱신
+  // 손패 갱신 (쯔모기리는 13장 구성 불변 → 대기 캐시 유지)
   if (tsumogiri) {
     p.drawnTile = null;
   } else {
@@ -558,6 +570,7 @@ function performDiscard(state: RoundState, seat: Seat, tileId: TileId, riichi: b
       p.drawnTile = null;
     }
     sortHand(p.hand);
+    p.handRevision++;
   }
 
   if (riichi) {
@@ -602,6 +615,7 @@ function performAnkan(state: RoundState, seat: Seat, kind: TileKind): void {
   p.hand = all.filter((t) => kindOfTile(t) !== kind);
   sortHand(p.hand);
   p.drawnTile = null;
+  p.handRevision++;
 
   const meld: Meld = { type: 'ankan', tiles: ids as [TileId, TileId, TileId, TileId] };
 
@@ -635,6 +649,7 @@ function performShouminkan(state: RoundState, seat: Seat, tileId: TileId): void 
       p.drawnTile = null;
       sortHand(p.hand);
     }
+    p.handRevision++;
   }
 
   const meld: Meld = {
@@ -715,8 +730,12 @@ function openReactionWindow(state: RoundState, kind: 'discard', from: Seat, tile
     const p = player(state, seat);
     const list: ReactionOffer[] = [];
 
-    // 론 (후리텐이면 불가)
-    if (!isFuriten(state, seat) && winCheck(state, seat, tileId, 'ron') !== null) {
+    // 론 (대기패 캐시로 사전 필터, 후리텐이면 불가)
+    if (
+      currentWaits(p).includes(tileKind) &&
+      !isFuriten(state, seat) &&
+      winCheck(state, seat, tileId, 'ron') !== null
+    ) {
       list.push({ type: 'ron' });
     }
 
@@ -909,6 +928,7 @@ function executePon(state: RoundState, seat: Seat, window: ReactionWindow): void
   const kind = kindOfTile(window.tileId);
   const own = p.hand.filter((t) => kindOfTile(t) === kind).slice(0, 2);
   for (const t of own) p.hand = removeOne(p.hand, t);
+  p.handRevision++;
   const meld: Meld = {
     type: 'pon',
     tiles: sortHand([...own, window.tileId]) as [TileId, TileId, TileId],
@@ -929,6 +949,7 @@ function executeDaiminkan(state: RoundState, seat: Seat, window: ReactionWindow)
   const kind = kindOfTile(window.tileId);
   const own = p.hand.filter((t) => kindOfTile(t) === kind);
   for (const t of own) p.hand = removeOne(p.hand, t);
+  p.handRevision++;
   const meld: Meld = {
     type: 'daiminkan',
     tiles: sortHand([...own, window.tileId]) as [TileId, TileId, TileId, TileId],
@@ -950,6 +971,7 @@ function executeChi(
   const p = player(state, seat);
   p.hand = removeOne(p.hand, tiles[0]);
   p.hand = removeOne(p.hand, tiles[1]);
+  p.handRevision++;
   const meld: Meld = {
     type: 'chi',
     tiles: sortHand([tiles[0], tiles[1], window.tileId]) as [TileId, TileId, TileId],
@@ -1102,6 +1124,7 @@ function finishWithWins(
       if (last) last.calledBy = firstWinner;
     }
     player(state, firstWinner).hand.push(ronTile.tileId);
+    player(state, firstWinner).handRevision++;
   }
 
   const entries: WinEntry[] = [];

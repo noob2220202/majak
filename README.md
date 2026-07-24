@@ -2,7 +2,7 @@
 
 한국 전통 미학을 입힌 온라인 4인 리치마작 웹게임. 전체 개발 계획은 [PLAN.md](./PLAN.md)를 참고하세요.
 
-현재 상태: **Phase 2 — 서버와 프로토콜 완료** (엔진 + 온라인 대국 서버, 클라 UI는 Phase 3)
+현재 상태: **Phase 3 — 클라이언트 코어 완료** (브라우저에서 실제 대국 가능, 디자인 폴리시는 Phase 4)
 
 ## 개발 실행
 
@@ -13,8 +13,10 @@ pnpm install
 pnpm dev
 ```
 
-- 클라이언트 (Vite): http://localhost:5173
+- 클라이언트 (Vite): http://localhost:5173 — 닉네임 입력 → [연습 대국]으로 봇 3인과 즉시 대국, 또는 [친선방]으로 브라우저 2개 대국
 - 서버 헬스체크 (Fastify + Socket.IO): http://localhost:8787/healthz
+
+대국 진행 속도(봇/결과 지연)는 서버 환경변수로 조정: `BOT_DELAY_MS` `RESULT_DELAY_MS` `TURN_BASE_MS` `RESERVE_MS`.
 
 ## 스크립트
 
@@ -24,6 +26,7 @@ pnpm dev
 | `pnpm test` | 전 패키지 vitest |
 | `pnpm lint` / `pnpm typecheck` | ESLint / tsc --noEmit |
 | `pnpm build` | 클라 정적 빌드 + 서버 번들 |
+| `pnpm --filter @cheongiwa/client e2e` | Playwright E2E 스모크 (브라우저 필요) |
 
 ## 구조 (pnpm 모노레포)
 

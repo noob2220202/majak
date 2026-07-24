@@ -97,6 +97,8 @@ export class GameSession {
   private stepping = false;
   private pendingResult: RoundResultView | null = null;
   private resultTimer: NodeJS.Timeout | null = null;
+  /** 지연 실행 대기 중인 서버(봇·안전봇) 액션 타이머 — 중복 예약 방지 */
+  private serverActionTimer: NodeJS.Timeout | null = null;
   private ended = false;
   private readonly onEnd: (summary: SessionEndSummary) => void;
 
@@ -295,10 +297,16 @@ export class GameSession {
     }
   }
 
-  /** botDelay가 있으면 지연 실행하고 true, 없으면 즉시 실행하고 false */
+  /**
+   * botDelay가 있으면 지연 실행하고 true, 없으면 즉시 실행하고 false.
+   * 이미 예약된 서버 액션이 있으면 재예약하지 않는다 (step()이 여러 경로에서
+   * 호출돼도 봇이 두 번 두지 않도록 — 예: settings.auto가 트리거한 step).
+   */
   private scheduleServerAction(seat: Seat, act: () => void): boolean {
     if (this.options.botDelayMs > 0) {
-      setTimeout(() => {
+      if (this.serverActionTimer) return true;
+      this.serverActionTimer = setTimeout(() => {
+        this.serverActionTimer = null;
         if (this.ended) return;
         act();
         this.step();
@@ -310,30 +318,46 @@ export class GameSession {
   }
 
   private serverTurnAction(seat: Seat): void {
-    const round = this.round();
+    const round = this.game.round;
+    if (!round || round.phase !== 'turn' || round.active !== seat) return;
     const s = this.seats[seat] as SeatState;
-    let action: RoundAction;
-    if (s.kind === 'bot') {
-      action = (this.smartBots[seat] as Bot).chooseTurnAction(round, seat);
-    } else {
-      // 안전봇: 화료만 자동, 나머지는 쯔모기리 (§3.4)
-      const c = turnChoices(round);
+    const c = turnChoices(round);
+    const safeDiscard = (): RoundAction => {
       const drawn = round.players[seat].drawnTile;
-      action = c.canTsumo
-        ? { type: 'tsumo' }
-        : { type: 'discard', tileId: drawn ?? (c.discards[0] as number) };
+      const tileId = drawn !== null && c.discards.includes(drawn) ? drawn : (c.discards[0] as number);
+      return c.canTsumo ? { type: 'tsumo' } : { type: 'discard', tileId };
+    };
+    let action: RoundAction;
+    try {
+      action =
+        s.kind === 'bot'
+          ? (this.smartBots[seat] as Bot).chooseTurnAction(round, seat)
+          : safeDiscard();
+    } catch {
+      action = safeDiscard(); // 봇 예외는 안전 타패로 폴백 (서버 크래시 방지)
     }
-    this.applySeatAction(seat, action);
+    try {
+      this.applySeatAction(seat, action);
+    } catch {
+      this.applySeatAction(seat, safeDiscard());
+    }
   }
 
   private serverReactionAction(seat: Seat): void {
-    const round = this.round();
+    const round = this.game.round;
+    if (!round || round.phase !== 'reaction' || !reactionOffers(round).has(seat)) return;
     const s = this.seats[seat] as SeatState;
-    const action: RoundAction =
-      s.kind === 'bot'
-        ? (this.smartBots[seat] as Bot).chooseReaction(round, seat)
-        : { type: 'pass' };
-    this.applySeatAction(seat, action);
+    let action: RoundAction = { type: 'pass' };
+    try {
+      if (s.kind === 'bot') action = (this.smartBots[seat] as Bot).chooseReaction(round, seat);
+    } catch {
+      action = { type: 'pass' };
+    }
+    try {
+      this.applySeatAction(seat, action);
+    } catch {
+      this.applySeatAction(seat, { type: 'pass' });
+    }
   }
 
   private tryAutoTurn(seat: Seat): RoundAction | null {
@@ -497,6 +521,7 @@ export class GameSession {
       if (s.socket) void s.socket.leave(this.room);
     }
     if (this.resultTimer) clearTimeout(this.resultTimer);
+    if (this.serverActionTimer) clearTimeout(this.serverActionTimer);
     this.onEnd(summary);
   }
 
@@ -595,6 +620,7 @@ export class GameSession {
   dispose(): void {
     this.ended = true;
     if (this.resultTimer) clearTimeout(this.resultTimer);
+    if (this.serverActionTimer) clearTimeout(this.serverActionTimer);
     for (const s of this.seats) {
       if (s.timer) clearTimeout(s.timer);
       s.timer = null;

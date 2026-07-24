@@ -103,6 +103,22 @@ afterEach(async () => {
   ctx = null;
 });
 
+describe('봇 지연 + settings.auto 동시 진입 (회귀: 봇 이중 착수 크래시)', () => {
+  it('game.start 직후 settings.auto가 봇 타이머와 겹쳐도 크래시 없이 완주한다', async () => {
+    // botDelayMs>0 이면 봇 액션이 setTimeout으로 예약된다. 클라가 game.start 직후
+    // 보내는 settings.auto가 step()을 호출해 같은 봇 액션이 이중 예약되던 버그의 회귀.
+    const { url } = await startServer({ botDelayMs: 15, resultDelayMs: 5 });
+    const socket = connect(url);
+    await hello(socket, '회귀');
+    const started = once<GameStartView>(socket, 'game.start');
+    socket.emit('lobby.practice');
+    await started;
+    autoAll(socket); // 봇 타이머가 이미 예약된 상태에서 step() 트리거
+    const end = await once<GameEndView>(socket, 'game.end', 60000);
+    expect(end.standings).toHaveLength(4);
+  }, 90000);
+});
+
 describe('연습 대국 (봇 3) 완주', () => {
   it('game.start → 진행 → game.end, 시드 커밋-공개 검증', async () => {
     const { url } = await startServer();
@@ -196,7 +212,8 @@ describe('턴 타이머 (§3.4)', () => {
 
 describe('친선방 → 대국, 강제 종료 → 봇 대체 → 재접속 (완료 기준 시나리오)', () => {
   it('2인 + 봇2 대국에서 1인 이탈·복귀까지 완주한다', async () => {
-    const { url } = await startServer();
+    // 봇·결과 지연을 주어 대국이 순식간에 끝나기 전에 재접속을 검증한다
+    const { url } = await startServer({ botDelayMs: 30, resultDelayMs: 300 });
     const a = connect(url);
     const b = connect(url);
     await hello(a, '갑');

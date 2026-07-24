@@ -94,3 +94,55 @@ export { basePointsOf, yakumanBasePoints, ronPoints, tsumoPayments } from './sco
 
 export type { AgariInput, AgariResult } from './agari';
 export { evaluateWin, kanCount } from './agari';
+
+export type { WallState } from './wall';
+export {
+  createWall,
+  shuffledWall,
+  dealHands,
+  sortHand,
+  drawLive,
+  drawRinshan,
+  revealDora,
+  doraIndicatorKinds,
+  uraIndicatorKinds,
+} from './wall';
+
+export type {
+  DiscardEntry,
+  RiichiState,
+  PlayerState,
+  AbortiveReason,
+  WinEntry,
+  RoundResult,
+  ReactionOffer,
+  RoundPhase,
+  RoundState,
+  RoundEvent,
+  RoundAction,
+  TurnChoices,
+  RoundConfig,
+} from './round';
+export {
+  startRound,
+  turnChoices,
+  reactionOffers,
+  applyAction,
+  isFuriten,
+  seatWindOf,
+} from './round';
+
+export type {
+  GameConfig,
+  GameEndReason,
+  FinalStanding,
+  GameState,
+  AdvanceOptions,
+} from './game';
+export { startGame, advanceGame, dealerOf, roundWindOf } from './game';
+
+export type { Bot } from './bot';
+export { createBotV1 } from './bot';
+
+export type { SimulationStats, SimulationOptions } from './simulate';
+export { runSimulation, gameFingerprint, formatStats, emptyStats } from './simulate';

@@ -40,6 +40,8 @@ const options = {
   model: value('model', null),
   quality: value('quality', 'high'),
   concurrency: Number(value('concurrency', '2')),
+  /** 이 금액(USD)을 넘길 것 같으면 남은 항목을 생성하지 않고 멈춘다 */
+  budget: value('budget', null) === null ? null : Number(value('budget', '0')),
 };
 
 /**
@@ -54,12 +56,18 @@ const modelFor = (item) => options.model ?? (item.alpha ? ALPHA_MODEL : OPAQUE_M
 
 /** 출력 이미지 토큰 100만당 USD (요금표 확인 필요 — 실지출 추적용 근사) */
 const USD_PER_MTOK = 40;
-/** high 품질 기준 대략 출력 토큰 수 */
-const EST_TOKENS = { '1024x1024': 4200, '1536x1024': 6000, '1024x1536': 6000 };
-const estCost = (item) => ((EST_TOKENS[item.gen] ?? 4200) / 1_000_000) * USD_PER_MTOK;
+/** high 품질 실측 출력 토큰 수. medium 은 대략 1/4.3 이다. */
+const EST_TOKENS = { '1024x1024': 4558, '1536x1024': 6000, '1024x1536': 6300 };
+const QUALITY_FACTOR = { low: 0.12, medium: 0.23, high: 1, auto: 1 };
+
+const qualityFor = (item) => item.quality ?? options.quality;
+const estCost = (item) =>
+  ((EST_TOKENS[item.gen] ?? 4558) * (QUALITY_FACTOR[qualityFor(item)] ?? 1) * USD_PER_MTOK) /
+  1_000_000;
 
 /** 실제 사용량 누적 */
 const spent = { tokens: 0, images: 0 };
+const spentUsd = () => (spent.tokens / 1_000_000) * USD_PER_MTOK;
 
 // ── 유틸 ──────────────────────────────────────────────────────────────
 
@@ -132,7 +140,7 @@ async function generate(item) {
     model: modelFor(item),
     prompt: item.prompt,
     size: item.gen,
-    quality: options.quality,
+    quality: qualityFor(item),
     n: 1,
   };
   // gpt-image-2 는 background 파라미터 자체를 거부한다 — 투명이 필요한 항목에만 붙인다
@@ -166,7 +174,7 @@ async function generateWithRef(item) {
   form.append('model', modelFor(item));
   form.append('prompt', item.prompt);
   form.append('size', item.gen);
-  form.append('quality', options.quality);
+  form.append('quality', qualityFor(item));
   if (item.alpha) form.append('background', 'transparent');
   form.append(
     'image[]',
@@ -216,7 +224,9 @@ async function main() {
 
   const cost = list.reduce((sum, i) => sum + estCost(i), 0);
 
-  console.log(`대상 ${list.length}장 · 품질 ${options.quality}`);
+  const qualities = new Set(list.map(qualityFor));
+  console.log(`대상 ${list.length}장 · 품질 ${[...qualities].join('+')}`);
+  if (options.budget !== null) console.log(`예산 상한 $${options.budget} (넘으면 중단)`);
   console.log(`모델: 불투명 ${OPAQUE_MODEL} / 투명 ${ALPHA_MODEL}${options.model ? ` (강제: ${options.model})` : ''}`);
   console.log(`예상 비용 약 $${cost.toFixed(2)} (재시도 제외, 요금표 확인 필요)\n`);
 
@@ -234,6 +244,7 @@ async function main() {
   }
 
   const failed = [];
+  const skipped = [];
   let done = 0;
   const queue = [...list];
 
@@ -245,6 +256,10 @@ async function main() {
       if (!options.force && (await exists(target))) {
         console.log(`  = ${item.file} (이미 있음, 건너뜀)`);
         done++;
+        continue;
+      }
+      if (options.budget !== null && spentUsd() + estCost(item) > options.budget) {
+        skipped.push(item.file);
         continue;
       }
       try {
@@ -271,8 +286,13 @@ async function main() {
   console.log(`\n완료 ${done - failed.length}/${list.length}`);
   console.log(
     `사용량: ${spent.images}콜 · 출력 ${spent.tokens.toLocaleString()}토큰 ` +
-      `· 실지출 약 $${((spent.tokens / 1_000_000) * USD_PER_MTOK).toFixed(2)}`,
+      `· 실지출 약 $${spentUsd().toFixed(2)}`,
   );
+  if (skipped.length > 0) {
+    // 예산 때문에 건너뛴 것을 반드시 밝힌다 — 조용히 빠지면 "다 됐다"로 읽힌다
+    console.log(`\n예산($${options.budget}) 도달로 건너뜀 ${skipped.length}장:`);
+    console.log('  ' + skipped.join(', '));
+  }
   if (failed.length > 0) {
     console.log('실패:');
     for (const f of failed) console.log(`  ${f.id}: ${f.message}`);

@@ -116,6 +116,8 @@ const characters = CHARACTERS.flatMap((c) => [
     out: [1600, 2400],
     alpha: true,
     format: 'png',
+    /** 화면에서 가장 크게 보이므로 이것만 high 로 뽑는다 */
+    quality: 'high',
     prompt: `original character concept art, full body anime illustration, ${c.look}, standing pose facing slightly to the side, full body visible from head to toe with the feet included, centered in frame, detailed embroidered fabric patterns, ${STYLE_OBJECT}, original design, transparent background`,
   },
   {

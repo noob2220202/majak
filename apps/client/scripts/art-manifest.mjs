@@ -8,23 +8,40 @@
  */
 
 /**
- * 스타일 고정 문구 — 한 게임처럼 보이게 하는 핵심.
+ * 스타일 고정 문구 — 전 에셋이 한 팀이 그린 것처럼 보이게 하는 유일한 장치.
  *
- * 장면용과 오브젝트용을 나눈다. 공용 문구에 "기와 지붕"을 넣었더니 인물 어깨 뒤와
- * 아이콘 배경에까지 기와가 끼어들어, 건축이 주제인 것에만 남긴다.
+ * 통일감의 정체는 "같은 화풍"이 아니라 **같은 팔레트 + 같은 마감 + 같은 형태 언어**다.
+ * 배경 화풍을 UI에 그대로 씌워봤더니 UI가 흐려져 못 쓰게 됐다(채도가 빠지고 버튼 속이 비었다).
+ * 그래서 아래 FINISH(마감 규칙)만 전 항목에 똑같이 강제하고, 주제 문장만 바꾼다.
+ *
+ * 모델도 하나로 고정한다 — `gpt-image-1.5`. 렌더러가 다르면 같은 문구를 줘도 붙지 않는다.
  */
-const STYLE_BASE =
-  'painterly anime game art, soft cel shading, elegant Korean traditional aesthetic, ' +
-  'dancheong color palette of deep indigo vermilion red jade green and gold leaf, ' +
-  'high detail, no text, no watermark, no UI, no letters, no signature';
+const PALETTE =
+  'strictly this palette: deep indigo #1e2436, vermilion lacquer #a8382c, jade green #2f5a4a, ' +
+  'aged gold leaf #c8a24b, hanji off-white #f4eddd, roof-tile grey #6d7480';
+
+/** 마감 규칙 — 전 항목 공통. 광택 금지가 핵심이다 */
+const FINISH =
+  'hand-painted Korean traditional art, MATTE painted lacquer and aged wood like real dancheong ' +
+  'on a temple beam — never plastic, flat colour areas with soft painted shading, ' +
+  `${PALETTE}, ` +
+  'NO glossy plastic highlight, NO mirror specular, NO chrome, NO neon glow, NO gradient sheen, ' +
+  'NO heavy 3D bevel, NO drop shadow, NO thick black cartoon outline, ' +
+  'no text, no watermark, no letters, no signature';
 
 /** 배경·현판 등 건축이 주제인 것 */
-export const STYLE = `${STYLE_BASE}, grey curved Korean giwa roof tiles`;
+export const STYLE = `${FINISH}, grey curved Korean giwa roof tiles`;
 
-/** 인물·아이콘 등 단독 오브젝트 — 배경 요소가 끼어들면 안 된다 */
+/**
+ * 인물·아이콘·버튼 등 단독 오브젝트.
+ * 배경 요소가 끼어들면 안 되고, 색 있는 판은 반드시 속이 채워져야 한다
+ * (테두리만 남으면 글자를 얹을 면이 없다).
+ */
 export const STYLE_OBJECT =
-  `${STYLE_BASE}, plain empty background with no scenery, no buildings, no roof, ` +
-  'no landscape, nothing behind the subject';
+  `${FINISH}, single isolated object, plain empty background with no scenery no buildings ` +
+  'no roof no landscape behind the subject, ' +
+  'all coloured panels are SOLID FILLED never hollow or outline-only, ' +
+  'clear silhouette that stays legible when shrunk';
 
 /** 배경 공통 — 인물 금지 */
 const BG = 'digital painting, anime game background art, wide cinematic composition, no people, no characters';
@@ -116,8 +133,6 @@ const characters = CHARACTERS.flatMap((c) => [
     out: [1600, 2400],
     alpha: true,
     format: 'png',
-    /** 화면에서 가장 크게 보이므로 이것만 high 로 뽑는다 */
-    quality: 'high',
     prompt: `original character concept art, full body anime illustration, ${c.look}, standing pose facing slightly to the side, full body visible from head to toe with the feet included, centered in frame, detailed embroidered fabric patterns, ${STYLE_OBJECT}, original design, transparent background`,
   },
   {

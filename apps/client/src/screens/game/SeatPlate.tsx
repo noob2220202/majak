@@ -1,3 +1,4 @@
+import type { SeatProfileView } from '@cheongiwa/protocol';
 import type { SeatView } from '../../store/game';
 import { SEAT_WIND_LABEL, seatWind } from './geometry';
 
@@ -7,11 +8,13 @@ export function SeatPlate({
   dealer,
   active,
   reserveRatio,
+  profile,
 }: {
   seat: SeatView;
   dealer: number;
   active: boolean;
   reserveRatio: number | null;
+  profile?: SeatProfileView;
 }) {
   const wind = SEAT_WIND_LABEL[seatWind(seat.seat, dealer) - 27] ?? '';
   return (
@@ -37,6 +40,15 @@ export function SeatPlate({
           <span className="text-xs text-dan-red">끊김</span>
         )}
       </div>
+      {profile?.tier && (
+        <div
+          className="mt-0.5 text-[10px] font-semibold tracking-wider text-gold/75"
+          style={{ fontFamily: 'var(--font-serif-kr)' }}
+        >
+          {profile.tier}
+          {profile.level > 0 && ` ${profile.level}`}
+        </div>
+      )}
       <div className="mt-0.5 flex items-center justify-center gap-2">
         <span className="text-base font-bold tabular-nums text-gold-hi">{seat.score.toLocaleString()}</span>
         {seat.riichi?.accepted && (

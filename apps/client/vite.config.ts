@@ -8,6 +8,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/socket.io': { target: 'http://localhost:8787', ws: true },
+      '/api': { target: 'http://localhost:8787' },
       '/healthz': { target: 'http://localhost:8787' },
     },
   },

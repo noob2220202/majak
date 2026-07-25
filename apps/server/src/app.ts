@@ -14,14 +14,19 @@ import {
   RoomCodeSchema,
   RoomReadySchema,
   RuleSettingsSchema,
+  ShopBuySchema,
+  ShopEquipSchema,
   type AuthWelcome,
   type ServerErrorView,
 } from '@cheongiwa/protocol';
 import { authenticate, statsOf } from './auth';
 import { openDatabase, type AppDatabase } from './db';
+import { grantGameRewards, grantReliefIfNeeded } from './economy';
 import { DEFAULT_MATCHMAKING, Matchmaking, type MatchmakingOptions } from './matchmaking';
+import { applyGameRatings, rankOf } from './ranks';
 import { persistGame } from './records';
 import { RoomManager } from './rooms';
+import { buyItem, CATALOG, equipItem, walletView } from './shop';
 import {
   DEFAULT_SESSION_OPTIONS,
   GameSession,
@@ -67,6 +72,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   const db = openDatabase(options.dbPath ?? process.env.DB_PATH ?? 'data/cheongiwa.db');
   const sessionOptions: SessionOptions = { ...DEFAULT_SESSION_OPTIONS, ...options.session };
 
+  app.get('/api/shop/catalog', async () => CATALOG);
+
   app.get('/healthz', async () => ({
     ok: true,
     service: 'cheongiwa-server',
@@ -88,25 +95,54 @@ export async function buildServer(options: BuildServerOptions = {}) {
   const rooms = new RoomManager(io);
   const sessions = new Map<string, GameSession>();
   const sessionByUser = new Map<string, string>();
+  /** 보상·등급 알림 전송용 (userId → 현재 소켓) */
+  const socketsByUser = new Map<string, Socket>();
 
   const launchSession = (
     seats: SessionSeatInit[],
     rules: unknown,
     practice: boolean,
   ): GameSession => {
+    // 좌석별 공개 프로필(등급·패 뒷면)을 붙인다 — 표시용, 판정에는 쓰이지 않는다 (§6.1-2)
+    const withProfiles = seats.map((s) => {
+      if (!s.userId) return s;
+      const rank = rankOf(db, s.userId);
+      const { loadout } = walletView(db, s.userId);
+      return {
+        ...s,
+        profile: {
+          tier: rank.games > 0 ? rank.tier : null,
+          level: rank.level,
+          tileBack: loadout.tileBack,
+          winEffect: loadout.winEffect,
+        },
+      };
+    });
     const session = new GameSession(
       io,
-      seats,
+      withProfiles,
       RuleSettingsSchema.parse(rules ?? {}),
       { ...sessionOptions, practice },
       (summary) => {
         persistGame(db, summary);
-        sessions.delete(summary.gameId);
+        // 엽전 보상 + 등급 반영 (§6.2 — 인간 2인 이상·연습 아님·완주, gameId 멱등)
+        const rewards = grantGameRewards(db, summary);
+        const ranks = applyGameRatings(db, summary);
         for (const seat of summary.seats) {
-          if (seat.userId && sessionByUser.get(seat.userId) === summary.gameId) {
+          if (!seat.userId) continue;
+          const target = socketsByUser.get(seat.userId);
+          if (target) {
+            const reward = rewards.get(seat.userId);
+            if (reward) target.emit('wallet.rewards', reward);
+            const rank = ranks.get(seat.userId);
+            if (rank) target.emit('rank.state', rank);
+            target.emit('wallet.state', walletView(db, seat.userId));
+          }
+          if (sessionByUser.get(seat.userId) === summary.gameId) {
             sessionByUser.delete(seat.userId);
           }
         }
+        sessions.delete(summary.gameId);
       },
     );
     sessions.set(session.id, session);
@@ -182,11 +218,18 @@ export async function buildServer(options: BuildServerOptions = {}) {
         }
       }
 
+      socketsByUser.set(authed.userId, socket);
+      // 빈곤 구제: 잔액이 기준선 미만이면 하루 1회 충전 (§6.2)
+      const relief = grantReliefIfNeeded(db, authed.userId);
+
       const welcome: AuthWelcome = {
         userId: authed.userId,
         nickname: authed.nickname,
         stats: statsOf(db, authed.userId),
         activeGameId,
+        wallet: walletView(db, authed.userId),
+        rank: rankOf(db, authed.userId),
+        pendingRewards: relief,
       };
       if (authed.issuedToken) welcome.token = authed.issuedToken;
       socket.emit('auth.welcome', welcome);
@@ -298,6 +341,35 @@ export async function buildServer(options: BuildServerOptions = {}) {
       session?.setAutoSettings(userId, payload);
     });
 
+    on('wallet.request', null, () => {
+      const userId = requireAuth();
+      if (!userId) return;
+      socket.emit('wallet.state', walletView(db, userId));
+      socket.emit('rank.state', rankOf(db, userId));
+    });
+
+    on('shop.buy', ShopBuySchema, (payload) => {
+      const userId = requireAuth();
+      if (!userId) return;
+      const result = buyItem(db, userId, payload.itemId);
+      if (!result.ok) {
+        sendError(socket, 'BAD_REQUEST', result.message);
+        return;
+      }
+      socket.emit('wallet.state', result.wallet);
+    });
+
+    on('shop.equip', ShopEquipSchema, (payload) => {
+      const userId = requireAuth();
+      if (!userId) return;
+      const result = equipItem(db, userId, payload.slot, payload.itemId);
+      if (!result.ok) {
+        sendError(socket, 'BAD_REQUEST', result.message);
+        return;
+      }
+      socket.emit('wallet.state', result.wallet);
+    });
+
     on('sync.request', null, () => {
       const userId = requireAuth();
       if (!userId) return;
@@ -312,6 +384,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
     });
 
     socket.on('disconnect', () => {
+      for (const [uid, bound] of socketsByUser) {
+        if (bound.id === socket.id) socketsByUser.delete(uid);
+      }
       rooms.handleDisconnect(socket.id);
       matchmaking.handleDisconnect(socket.id);
       for (const session of sessions.values()) {
@@ -334,3 +409,12 @@ export async function buildServer(options: BuildServerOptions = {}) {
 }
 
 export type ServerApp = Awaited<ReturnType<typeof buildServer>>;
+
+/**
+ * 서버 내부 상태 접근 (테스트·스크립트용).
+ * FastifyInstance가 thenable이라 `await` 과정에서 부착한 필드의 타입이 벗겨지므로
+ * 여기서 한 번만 되살린다.
+ */
+export function contextOf(app: ServerApp): ServerContext {
+  return (app as ServerApp & { ctx: ServerContext }).ctx;
+}

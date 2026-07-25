@@ -12,7 +12,7 @@ import type {
   RoomStateView,
   ServerErrorView,
 } from '@cheongiwa/protocol';
-import { buildServer, type ServerApp } from '../src/app';
+import { buildServer, contextOf, type ServerApp } from '../src/app';
 
 /**
  * 프로토콜 통합 테스트 (PLAN.md §8.2):
@@ -405,5 +405,54 @@ describe('빠른 대전 (§3.2)', () => {
     socket.emit('lobby.fillAccept', { accept: true });
     const start = await started;
     expect(start.players.filter((p) => p.isBot)).toHaveLength(3);
+  }, 30000);
+});
+
+describe('저잣거리·지갑 프로토콜 (§6.3)', () => {
+  it('카탈로그 조회 → 구매 → 장착이 지갑 상태로 반영된다', async () => {
+    const { url, app } = await startServer();
+
+    const res = await app.inject({ method: 'GET', url: '/api/shop/catalog' });
+    expect(res.statusCode).toBe(200);
+    const catalog = res.json() as Array<{ id: string; slot: string; price: number }>;
+    const paid = catalog.find((i) => i.slot === 'tileBack' && i.price > 0);
+    expect(paid).toBeDefined();
+
+    const socket = connect(url);
+    const welcome = await hello(socket, '장돌뱅이');
+    // 첫 접속은 빈곤 구제로 기준선까지 채워진다 (§6.2)
+    expect(welcome.wallet.balance).toBeGreaterThan(0);
+    expect(welcome.rank.tier).toBe('유생');
+    expect(welcome.wallet.loadout.tileBack).toBe('tileBack.sumaksae');
+
+    // 잔액이 모자란 구매는 거부되고 지갑은 그대로
+    const rejected = once<ServerErrorView>(socket, 'server.error', 5000);
+    socket.emit('shop.buy', { itemId: paid?.id });
+    expect((await rejected).code).toBe('BAD_REQUEST');
+
+    // 엽전을 채워주고 다시 구매 → 잔액 차감 + 해금
+    contextOf(app)
+      .db.prepare('UPDATE wallets SET balance = 9999 WHERE user_id = ?')
+      .run(welcome.userId);
+    const bought = once<{ balance: number; unlocked: string[] }>(socket, 'wallet.state', 5000);
+    socket.emit('shop.buy', { itemId: paid?.id });
+    const afterBuy = await bought;
+    expect(afterBuy.balance).toBe(9999 - (paid?.price ?? 0));
+    expect(afterBuy.unlocked).toContain(paid?.id);
+
+    // 장착하면 loadout이 바뀐다
+    const equipped = once<{ loadout: Record<string, string> }>(socket, 'wallet.state', 5000);
+    socket.emit('shop.equip', { slot: 'tileBack', itemId: paid?.id });
+    expect((await equipped).loadout.tileBack).toBe(paid?.id);
+
+    // 대국 시작 시 그 뒷면이 좌석 프로필로 전달된다 (상대에게도 보인다)
+    const started = once<GameStartView>(socket, 'game.start', 10000);
+    socket.emit('lobby.practice');
+    const start = await started;
+    expect(start.profiles).toHaveLength(4);
+    expect(start.profiles[start.seat]?.tileBack).toBe(paid?.id);
+    // 봇 좌석은 기본 프로필 — 등급 표시 없음
+    const botSeat = start.players.find((p) => p.isBot)?.seat ?? 1;
+    expect(start.profiles[botSeat]?.tier).toBeNull();
   }, 30000);
 });

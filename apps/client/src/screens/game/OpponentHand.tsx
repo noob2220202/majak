@@ -7,11 +7,14 @@ export function OpponentHand({
   holding,
   pos,
   width = 20,
+  backId,
 }: {
   meldCount: number;
   holding: boolean;
   pos: RelPos;
   width?: number;
+  /** 그 좌석이 장착한 패 뒷면 (§6.3) */
+  backId?: string;
 }) {
   const count = 13 - meldCount * 3;
   const vertical = pos === 'left' || pos === 'right';
@@ -20,11 +23,11 @@ export function OpponentHand({
   return (
     <div className={`flex ${vertical ? 'flex-col' : 'flex-row'} items-center gap-px`}>
       {backs.map((_, i) => (
-        <Tile key={i} faceDown width={width} rotated={vertical} />
+        <Tile key={i} faceDown width={width} rotated={vertical} backId={backId} />
       ))}
       {holding && (
         <div className={vertical ? 'mt-1.5' : 'ml-1.5'}>
-          <Tile faceDown width={width} rotated={vertical} />
+          <Tile faceDown width={width} rotated={vertical} backId={backId} />
         </div>
       )}
     </div>

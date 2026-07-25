@@ -5,6 +5,7 @@ import { useGame } from './store/game';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Lobby } from './screens/Lobby';
 import { Room } from './screens/Room';
+import { Shop } from './screens/Shop';
 import { GameScreen } from './screens/game/GameScreen';
 
 function ErrorToast() {
@@ -36,15 +37,28 @@ function ErrorToast() {
 
 export default function App() {
   const screen = useGame((s) => s.screen);
+  const shopOpen = useGame((s) => s.shopOpen);
+  const setShopOpen = useGame((s) => s.setShopOpen);
   useEffect(() => {
     initNetworking();
   }, []);
+
+  // 상점은 어느 화면에서도 Esc로 닫는다
+  useEffect(() => {
+    if (!shopOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setShopOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shopOpen, setShopOpen]);
 
   return (
     <>
       <ErrorBoundary>
         {screen === 'game' ? <GameScreen /> : screen === 'room' ? <Room /> : <Lobby />}
       </ErrorBoundary>
+      <AnimatePresence>{shopOpen && <Shop key="shop" />}</AnimatePresence>
       <ErrorToast />
     </>
   );

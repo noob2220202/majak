@@ -21,6 +21,7 @@ import type {
   GameStartView,
   PublicGameEvent,
   RoundResultView,
+  SeatProfileView,
 } from '@cheongiwa/protocol';
 import { buildChoices, buildRoundResult, buildRoundStart, buildSeatViews, redactEvent } from './views';
 
@@ -35,6 +36,8 @@ export interface SessionSeatInit {
   userId: string | null;
   nickname: string;
   socket: Socket | null;
+  /** 등급·장착 코스메틱 (없으면 기본값). 승패에 영향 없는 표시용이다. */
+  profile?: Omit<SeatProfileView, 'seat'>;
 }
 
 interface SeatState extends SessionSeatInit {
@@ -66,6 +69,14 @@ export const DEFAULT_SESSION_OPTIONS: SessionOptions = {
 };
 
 const sha256 = (v: string): string => createHash('sha256').update(v).digest('hex');
+
+/** 프로필이 없는 좌석(봇 등)의 기본 표시값 */
+const DEFAULT_PROFILE: Omit<SeatProfileView, 'seat'> = {
+  tier: null,
+  level: 0,
+  tileBack: 'tileBack.sumaksae',
+  winEffect: 'winEffect.basic',
+};
 
 export interface SessionEndSummary {
   gameId: string;
@@ -133,6 +144,11 @@ export class GameSession {
     return `game:${this.id}`;
   }
 
+  /** 좌석별 공개 프로필 (등급·패 뒷면) — 은닉 정보 없음 */
+  private profiles(): SeatProfileView[] {
+    return this.seats.map((s, seat) => ({ seat, ...(s.profile ?? DEFAULT_PROFILE) }));
+  }
+
   private round(): RoundState {
     const round = this.game.round;
     if (!round) throw new Error('진행 중인 국이 없음');
@@ -175,6 +191,7 @@ export class GameSession {
           })),
           rules: this.rules,
           seedHash: this.seedHash,
+          profiles: this.profiles(),
         };
         s.socket.emit('game.start', view);
       }
@@ -499,6 +516,7 @@ export class GameSession {
   private finishGame(): void {
     this.ended = true;
     const view: GameEndView = {
+      gameId: this.id,
       standings: this.game.standings ?? [],
       endReason: this.game.endReason ?? 'finished',
       seedHash: this.seedHash,
@@ -607,6 +625,7 @@ export class GameSession {
       seedHash: this.seedHash,
       round: buildRoundStart(this.game, round),
       players: buildSeatViews(round, meta),
+      profiles: this.profiles(),
       myHand: [...round.players[seat].hand],
       myDrawnTile: round.players[seat].drawnTile,
       activeSeat: round.active,

@@ -9,6 +9,11 @@ import {
 } from '@cheongiwa/engine';
 import type {
   AuthWelcome,
+  RankView,
+  RewardsView,
+  SeatProfileView,
+  ShopSlot,
+  WalletView,
   ChoicesView,
   GameEndView,
   GameSnapshotView,
@@ -47,6 +52,8 @@ export interface LocalGame {
   seedHash: string;
   rules: RuleSettings;
   players: Array<{ seat: Seat; nickname: string; isBot: boolean }>;
+  /** 좌석별 등급·장착 코스메틱 (표시 전용) */
+  profiles: SeatProfileView[];
   round: RoundStartView;
   seats: SeatView[];
   myHand: TileId[];
@@ -87,6 +94,13 @@ interface GameStore {
   game: LocalGame | null;
   gameEnd: GameEndView | null;
 
+  // 엽전 경제·등급 (§6)
+  wallet: WalletView | null;
+  rank: RankView | null;
+  /** 방금 지급된 보상 (플로팅 표시 후 해제) */
+  rewards: RewardsView | null;
+  shopOpen: boolean;
+
   // 설정
   auto: { autoWin: boolean; autoSkipCalls: boolean; autoTsumogiri: boolean };
   hints: boolean;
@@ -97,6 +111,10 @@ interface GameStore {
   /** 화면 중앙 선언 연출 큐 */
   announces: AnnounceItem[];
 
+  setShopOpen(open: boolean): void;
+  clearRewards(): void;
+  /** 내가 장착한 코스메틱 (없으면 기본값) */
+  equipped(slot: ShopSlot): string | undefined;
   setAuto(next: Partial<GameStore['auto']>): void;
   toggleHints(): void;
   toggleSimplified(): void;
@@ -167,12 +185,25 @@ export const useGame = create<GameStore>((set, get) => ({
   room: null,
   game: null,
   gameEnd: null,
+  wallet: null,
+  rank: null,
+  rewards: null,
+  shopOpen: false,
   auto: { ...emptyAuto },
   hints: prefs.hints ?? true,
   simplified: prefs.simplified ?? false,
   sound: { muted: prefs.muted ?? false, volume: prefs.volume ?? 0.6 },
   announces: [],
 
+  setShopOpen(open) {
+    set({ shopOpen: open });
+  },
+  clearRewards() {
+    set({ rewards: null });
+  },
+  equipped(slot) {
+    return get().wallet?.loadout[slot];
+  },
   setAuto(next) {
     const auto = { ...get().auto, ...next };
     set({ auto });
@@ -365,6 +396,7 @@ function snapshotToGame(snap: GameSnapshotView, players: LocalGame['players']): 
     seedHash: snap.seedHash,
     rules: snap.rules,
     players,
+    profiles: snap.profiles,
     round: snap.round,
     seats: snap.players.map((p) => ({
       seat: p.seat,
@@ -420,6 +452,9 @@ export function initNetworking(): void {
       userId: w.userId,
       nickname: w.nickname,
       stats: w.stats,
+      wallet: w.wallet,
+      rank: w.rank,
+      rewards: w.pendingRewards,
       screen: w.activeGameId ? get().screen : 'lobby',
     });
     if (w.activeGameId) socket.emit('sync.request');
@@ -460,6 +495,7 @@ export function initNetworking(): void {
         seedHash: view.seedHash,
         rules: view.rules,
         players: view.players,
+        profiles: view.profiles,
         round,
         seats: seatsFromRound(round, view.players),
         myHand: [],
@@ -581,6 +617,13 @@ export function initNetworking(): void {
       get().game?.players ??
       snap.players.map((p) => ({ seat: p.seat, nickname: p.nickname, isBot: p.isBot }));
     set({ screen: 'game', game: snapshotToGame(snap, players) });
+  });
+
+  socket.on('wallet.state', (wallet: WalletView) => set({ wallet }));
+  socket.on('rank.state', (rank: RankView) => set({ rank }));
+  socket.on('wallet.rewards', (rewards: RewardsView) => {
+    set({ rewards });
+    playSfx('result');
   });
 
   socket.on('server.error', (e: ServerErrorView) => {

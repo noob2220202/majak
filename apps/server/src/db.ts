@@ -84,7 +84,25 @@ function migrate(db: AppDatabase): void {
       PRIMARY KEY (user_id, slot)
     );
 
+    -- 등급·레이팅 (Phase 5): 유생 → 진사 → 급제 → 장원
+    CREATE TABLE IF NOT EXISTS ratings (
+      user_id TEXT PRIMARY KEY REFERENCES users(id),
+      points INTEGER NOT NULL DEFAULT 0,
+      games INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- 레이팅 반영 이력 (gameId 기준 멱등 키)
+    CREATE TABLE IF NOT EXISTS rating_log (
+      user_id TEXT NOT NULL REFERENCES users(id),
+      game_id TEXT NOT NULL,
+      delta INTEGER NOT NULL,
+      points_after INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, game_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
     CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ledger_user_game ON ledger(user_id, game_id);
   `);
 }

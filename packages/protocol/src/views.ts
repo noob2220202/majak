@@ -1,3 +1,4 @@
+import type { RankView, RewardsView, SeatProfileView, WalletView } from './economy';
 import type {
   AbortiveReason,
   FinalStanding,
@@ -37,6 +38,12 @@ export interface AuthWelcome {
   stats: PlayerStats;
   /** 재접속 가능한 진행 중 대국 */
   activeGameId: string | null;
+  /** 엽전 지갑·보유·장착 (§6) */
+  wallet: WalletView;
+  /** 등급 (유생→진사→급제→장원) */
+  rank: RankView;
+  /** 접속 시 지급된 빈곤 구제 등 (없으면 null) */
+  pendingRewards: RewardsView | null;
 }
 
 export interface RoomMemberView {
@@ -70,6 +77,8 @@ export interface GameStartView {
   rules: RuleSettings;
   /** 시드 커밋 (SHA-256 hex) — 종료 시 원본 공개로 검증 (§1.2-3) */
   seedHash: string;
+  /** 좌석별 등급·장착 코스메틱 (공개 정보 — 승패에 영향 없음, §6.1-2) */
+  profiles: SeatProfileView[];
 }
 
 /** 국 시작 정보 (모두 공개 정보) */
@@ -186,6 +195,7 @@ export type RoundResultView =
 
 /** 최종 결과 (§3.3 game.end) — 시드 원본 공개 */
 export interface GameEndView {
+  gameId: string;
   standings: FinalStanding[];
   endReason: GameEndReason;
   seedHash: string;
@@ -214,6 +224,7 @@ export interface GameSnapshotView {
   seedHash: string;
   round: RoundStartView;
   players: SeatPublicView[];
+  profiles: SeatProfileView[];
   myHand: TileId[];
   myDrawnTile: TileId | null;
   activeSeat: Seat;
@@ -252,6 +263,9 @@ export const SERVER_EVENTS = [
   'game.roundResult',
   'game.end',
   'sync.snapshot',
+  'wallet.state',
+  'wallet.rewards',
+  'rank.state',
   'server.error',
 ] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];

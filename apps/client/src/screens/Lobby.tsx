@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button, ConnectionBadge, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
@@ -59,6 +59,85 @@ function AuthCard() {
         게스트 입장 — 재접속용 토큰이 이 브라우저에 저장됩니다
       </p>
     </motion.section>
+  );
+}
+
+/** 상단 현판: 엽전 잔액 + 등급 + 저잣거리 입구 (§6.3) */
+function WalletBar() {
+  const wallet = useGame((s) => s.wallet);
+  const rank = useGame((s) => s.rank);
+  const setShopOpen = useGame((s) => s.setShopOpen);
+
+  return (
+    <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+      {rank && (
+        <span
+          className="rounded-lg bg-ink/60 px-3 py-1.5 text-sm font-semibold text-gold ring-1 ring-gold/25"
+          style={{ fontFamily: 'var(--font-serif-kr)' }}
+          title={rank.toNext !== null ? `승단까지 ${rank.toNext}점` : '최고 등급'}
+        >
+          {rank.tier}
+          {rank.level > 0 && ` ${rank.level}`}
+        </span>
+      )}
+      <span className="flex items-center gap-1.5 rounded-lg bg-ink/60 px-3 py-1.5 text-sm font-bold tabular-nums text-gold-hi ring-1 ring-gold/25">
+        <Yeopjeon size={14} />
+        {(wallet?.balance ?? 0).toLocaleString()}
+      </span>
+      <button
+        onClick={() => setShopOpen(true)}
+        className="rounded-lg bg-giwa px-3 py-1.5 text-sm font-semibold text-hanji ring-1 ring-gold/30 transition hover:brightness-110"
+        style={{ fontFamily: 'var(--font-serif-kr)' }}
+      >
+        저잣거리
+      </button>
+    </div>
+  );
+}
+
+/** 대국 보상 획득 내역 — 로비 복귀 시 떠올랐다가 사라진다 (§6.2) */
+function RewardFloat() {
+  const rewards = useGame((s) => s.rewards);
+  const clearRewards = useGame((s) => s.clearRewards);
+
+  useEffect(() => {
+    if (!rewards) return;
+    const id = setTimeout(clearRewards, 6000);
+    return () => clearTimeout(id);
+  }, [rewards, clearRewards]);
+
+  return (
+    <AnimatePresence>
+      {rewards && (
+        <motion.div
+          key={rewards.gameId}
+          initial={{ opacity: 0, y: 16, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -18 }}
+          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+          className="tex-hanji absolute right-3 top-16 z-20 w-56 cursor-pointer rounded-xl bg-giwa p-3 ring-1 ring-gold/35"
+          onClick={clearRewards}
+        >
+          <p className="text-xs font-semibold tracking-wider text-gold" style={{ fontFamily: 'var(--font-serif-kr)' }}>
+            엽전을 받았습니다
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-0.5">
+            {rewards.lines.map((line) => (
+              <li key={line.reason} className="flex justify-between text-[11px] text-hanji/70">
+                <span>{line.label}</span>
+                <span className="tabular-nums text-gold-hi">+{line.amount.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-1.5 flex justify-between border-t border-hanji/15 pt-1.5 text-sm font-bold text-gold-hi">
+            <span className="flex items-center gap-1">
+              <Yeopjeon size={13} />합계
+            </span>
+            <span className="tabular-nums">+{rewards.total.toLocaleString()}</span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -172,6 +251,12 @@ export function Lobby() {
       >
         청기와
       </h1>
+      {userId && (
+        <>
+          <WalletBar />
+          <RewardFloat />
+        </>
+      )}
       <main className="flex min-h-[calc(100dvh-104px)] flex-col items-center justify-center px-4 py-8">
         {userId ? <MainMenu /> : <AuthCard />}
         <footer className="mt-8">

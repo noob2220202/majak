@@ -1,6 +1,7 @@
 import type { RoundStartView } from '@cheongiwa/protocol';
 import { Tile } from '../../tiles/Tile';
 import { WIND_LABEL } from '../../store/eventText';
+import { useGame } from '../../store/game';
 
 /** 엽전 아이콘 (가운데 사각 구멍) — 공탁 표시 (§4.3) */
 function Yeopjeon({ size = 16 }: { size?: number }) {
@@ -14,6 +15,7 @@ function Yeopjeon({ size = 16 }: { size?: number }) {
 
 export function CenterPanel({ round }: { round: RoundStartView }) {
   const wind = WIND_LABEL[round.roundWind - 27] ?? '';
+  const myBack = useGame((s) => s.wallet?.loadout.tileBack);
   return (
     <div className="grid place-items-center rounded-2xl bg-giwa/90 p-3 text-center ring-2 ring-ink/60 shadow-2xl">
       <div className="flex items-baseline gap-1.5">
@@ -37,7 +39,7 @@ export function CenterPanel({ round }: { round: RoundStartView }) {
           <Tile key={i} kind={kind} width={18} />
         ))}
         {Array.from({ length: Math.max(0, 1 - round.doraIndicators.length) }).map((_, i) => (
-          <Tile key={`b${i}`} faceDown width={18} />
+          <Tile key={`b${i}`} faceDown width={18} backId={myBack} />
         ))}
       </div>
     </div>

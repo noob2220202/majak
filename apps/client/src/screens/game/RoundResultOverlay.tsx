@@ -121,6 +121,11 @@ export function RoundResultOverlay({
       ? result.wins.reduce((max, w) => Math.max(max, LIMIT_RANK[w.limit ?? ''] ?? 0), 0)
       : 0;
   const isYakuman = result.type === 'win' && result.wins.some((w) => w.yakuman.length > 0);
+  // 병풍 색은 화료자(더블론이면 첫 화료자)가 장착한 연출을 따른다 (§6.3)
+  const winEffect =
+    result.type === 'win'
+      ? game.profiles.find((p) => p.seat === result.wins[0]?.seat)?.winEffect
+      : undefined;
 
   return (
     <motion.div
@@ -131,7 +136,9 @@ export function RoundResultOverlay({
       onClick={onContinue}
     >
       {/* 만관 이상: 병풍이 펼쳐짐 / 역만: 금박 파티클 */}
-      {big >= 1 && <Byeongpung gold={isYakuman || big >= 5} simplified={simplified} />}
+      {big >= 1 && (
+        <Byeongpung gold={isYakuman || big >= 5} simplified={simplified} effectId={winEffect} />
+      )}
 
       <motion.div
         initial={{ scale: simplified ? 1 : 0.94, y: simplified ? 0 : 10 }}

@@ -101,12 +101,14 @@ async function callApi(pathname, body, { attempt = 0 } = {}) {
     return callApi(pathname, body, { attempt: attempt + 1 });
   }
 
-  if (res.status === 429 || res.status >= 500) {
+  // 잔액·한도 소진은 재시도해도 소용없다. 남은 수십 장을 줄줄이 실패시키지 말고 즉시 중단한다.
+  // 429(quota)로 올 때도 있고 400(billing hard limit)으로 올 때도 있어 둘 다 본다.
+  if (res.status === 429 || res.status === 400 || res.status >= 500) {
     const text = await res.text();
-    // 잔액 소진은 재시도해도 소용없다. 59장을 줄줄이 실패시키지 말고 즉시 중단한다.
-    if (/insufficient_quota|billing|exceeded your current quota/i.test(text)) {
-      throw new QuotaExhausted(text.slice(0, 200));
+    if (/insufficient_quota|billing|hard limit|exceeded your current quota/i.test(text)) {
+      throw new QuotaExhausted(text.replace(/\s+/g, ' ').slice(0, 160));
     }
+    if (res.status === 400) throw new Error(`400 ${text.slice(0, 300)}`);
     if (attempt >= 4) throw new Error(`${res.status} ${text.slice(0, 200)}`);
     // 조직 한도가 분당 5장이라 레이트리밋은 넉넉히 기다린다
     await new Promise((r) => setTimeout(r, 15_000 * (attempt + 1)));

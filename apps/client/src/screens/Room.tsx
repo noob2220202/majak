@@ -4,7 +4,7 @@ import type { RoomMemberView } from '@cheongiwa/protocol';
 import { Button, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
-import { NightSky } from './NightSky';
+import { Scene } from './Scene';
 import { DancheongBorder, Yeopjeon } from '../motifs/Motifs';
 
 const WIND_SEAT = ['동', '남', '서', '북'];
@@ -131,8 +131,8 @@ export function Room() {
   };
 
   return (
-    <NightSky simplified={simplified}>
-      <div className="mx-auto -mt-6 max-w-3xl px-4 pb-10">
+    <Scene id="room" simplified={simplified}>
+      <div className="mx-auto max-w-3xl px-4 pb-10 pt-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-sm text-hanji/60">{room.practice ? '연습' : '친선'} 방</p>
@@ -198,6 +198,6 @@ export function Room() {
           </div>
         </div>
       </div>
-    </NightSky>
+    </Scene>
   );
 }

@@ -77,9 +77,18 @@ export function GameScreen() {
 
   return (
     <div
-      className={`relative min-h-dvh bg-gradient-to-b from-[#183b32] to-[#0f261f] px-3 py-3 ${
-        simplified ? 'reduced-motion' : ''
-      }`}
+      className={`relative min-h-dvh px-3 py-3 ${simplified ? 'reduced-motion' : ''}`}
+      // 마작상 뒤 한옥 대청 — 중앙은 마작상에 가려지므로 좌우 기둥만 보인다.
+      // 별도 레이어 대신 이 요소의 배경으로 깔아야 모든 자식 뒤에 확실히 들어간다.
+      style={{
+        backgroundImage:
+          'radial-gradient(ellipse at 50% 46%, rgba(8,13,30,0.08) 0%, rgba(8,13,30,0.74) 100%),' +
+          ' url(/art/bg-hall.webp)',
+        backgroundSize: 'cover, cover',
+        backgroundPosition: 'center, center 45%',
+        backgroundAttachment: 'fixed, fixed',
+        backgroundColor: '#080d1e',
+      }}
     >
       {/* 상단 바 */}
       <div className="mx-auto mb-2 flex max-w-6xl items-center justify-between">

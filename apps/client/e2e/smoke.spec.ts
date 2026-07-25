@@ -15,7 +15,7 @@ test('친선방 → 봇 3 → 동풍전 완주 → 최종 결과', async ({ page
   await page.getByRole('button', { name: '입장' }).click();
 
   // 친선방 만들기 → 동풍전
-  await page.getByRole('button', { name: '친선방 만들기' }).click();
+  await page.getByRole('button', { name: '친선방' }).click();
   await expect(page.getByText('코드 복사')).toBeVisible();
   await page.getByRole('button', { name: '동풍전' }).click();
 

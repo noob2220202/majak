@@ -4,7 +4,8 @@ import { Button, ConnectionBadge, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
 import { unlockAudio } from '../audio/sfx';
-import { NightSky } from './NightSky';
+import { Scene } from './Scene';
+import { Plaque } from '../components/Plaque';
 import { Sumaksae, Yeopjeon } from '../motifs/Motifs';
 
 function AuthCard() {
@@ -80,8 +81,8 @@ function WalletBar() {
           {rank.level > 0 && ` ${rank.level}`}
         </span>
       )}
-      <span className="flex items-center gap-1.5 rounded-lg bg-ink/60 px-3 py-1.5 text-sm font-bold tabular-nums text-gold-hi ring-1 ring-gold/25">
-        <Yeopjeon size={14} />
+      <span className="flex items-center gap-1.5 rounded-lg bg-ink/60 py-1.5 pl-2 pr-3 text-sm font-bold tabular-nums text-gold-hi ring-1 ring-gold/25">
+        <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-6" />
         {(wallet?.balance ?? 0).toLocaleString()}
       </span>
       <button
@@ -111,11 +112,11 @@ function RewardFloat() {
       {rewards && (
         <motion.div
           key={rewards.gameId}
-          initial={{ opacity: 0, y: 16, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -18 }}
+          initial={{ opacity: 0, x: -16, scale: 0.96 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: -18 }}
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-          className="tex-hanji absolute right-3 top-16 z-20 w-56 cursor-pointer rounded-xl bg-giwa p-3 ring-1 ring-gold/35"
+          className="tex-hanji absolute left-5 top-14 z-20 w-56 cursor-pointer rounded-xl bg-giwa/95 p-3 ring-1 ring-gold/35"
           onClick={clearRewards}
         >
           <p className="text-xs font-semibold tracking-wider text-gold" style={{ fontFamily: 'var(--font-serif-kr)' }}>
@@ -178,9 +179,9 @@ function MainMenu() {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-      className="w-full max-w-sm"
+      className="w-full max-w-md md:w-[min(34vw,min(46vh,460px))] md:max-w-none"
     >
-      <div className="mb-4 flex items-center justify-between rounded-lg bg-hanji/10 px-4 py-2.5 ring-1 ring-gold/20">
+      <div className="mb-2 flex items-center justify-between rounded-lg bg-ink/55 px-4 py-2 ring-1 ring-gold/25">
         <span className="flex items-center gap-2 font-semibold text-hanji">
           <Yeopjeon size={15} />
           {nickname}
@@ -194,19 +195,17 @@ function MainMenu() {
       </div>
 
       {!joining ? (
-        <div className="flex flex-col gap-2.5">
-          <Button className="py-3 text-lg" onClick={() => send.quickMatch()}>
-            빠른 대전
-          </Button>
-          <Button variant="ghost" className="py-3" onClick={() => send.roomCreate()}>
-            친선방 만들기
-          </Button>
-          <Button variant="ghost" className="py-3" onClick={() => setJoining(true)}>
-            코드로 참가
-          </Button>
-          <Button variant="subtle" className="py-3" onClick={() => send.practice()}>
-            연습 대국 (봇 3인)
-          </Button>
+        <div className="flex flex-col">
+          <Plaque id={1} index={0} label="빠른 대전" onClick={() => send.quickMatch()} />
+          <div className="-mt-[3.5%]">
+            <Plaque id={2} index={1} label="친선방" sub="방을 만들어 벗을 부릅니다" onClick={() => send.roomCreate()} />
+          </div>
+          <div className="-mt-[3.5%]">
+            <Plaque id={3} index={2} label="코드 참가" sub="여섯 자리 코드로 들어갑니다" onClick={() => setJoining(true)} />
+          </div>
+          <div className="-mt-[3.5%]">
+            <Plaque id={4} index={3} label="연습 대국" sub="봇 3인과 둡니다" onClick={() => send.practice()} />
+          </div>
         </div>
       ) : (
         <Panel>
@@ -244,9 +243,9 @@ export function Lobby() {
   const simplified = useGame((s) => s.simplified);
 
   return (
-    <NightSky simplified={simplified}>
+    <Scene id="lobby" simplified={simplified}>
       <h1
-        className="pointer-events-none absolute inset-x-0 -top-24 text-center text-xl font-bold tracking-[0.5em] text-hanji/85"
+        className="pointer-events-none absolute left-6 top-4 z-10 text-2xl font-black tracking-[0.35em] text-hanji drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
         style={{ fontFamily: 'var(--font-serif-kr)' }}
       >
         청기와
@@ -257,12 +256,27 @@ export function Lobby() {
           <RewardFloat />
         </>
       )}
-      <main className="flex min-h-[calc(100dvh-104px)] flex-col items-center justify-center px-4 py-8">
+
+      {/* 대표 캐릭터 — 좌하단, 클릭 대상이 아니므로 이벤트를 통과시킨다 */}
+      {userId && (
+        <motion.img
+          src="/art/char-dan-full.webp"
+          alt=""
+          aria-hidden="true"
+          initial={{ opacity: 0, x: -28, scale: 1.02 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
+          className="pointer-events-none absolute bottom-0 left-[1%] z-10 hidden h-[86vh] max-h-[860px] object-contain object-bottom md:block"
+          style={{ filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.55))' }}
+        />
+      )}
+
+      <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-8 md:items-end md:pr-[6vw]">
         {userId ? <MainMenu /> : <AuthCard />}
-        <footer className="mt-8">
+        <footer className="mt-6">
           <ConnectionBadge status={connection} />
         </footer>
       </main>
-    </NightSky>
+    </Scene>
   );
 }

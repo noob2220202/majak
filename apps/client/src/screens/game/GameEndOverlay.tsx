@@ -36,7 +36,12 @@ export function GameEndOverlay({
   };
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-ink/85 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-40 grid place-items-center overflow-hidden bg-ink/85 p-4">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-[center_40%] opacity-60"
+        style={{ backgroundImage: 'url(/art/bg-result.webp)' }}
+        aria-hidden="true"
+      />
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

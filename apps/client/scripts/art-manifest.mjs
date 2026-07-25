@@ -7,12 +7,24 @@
  * stage: 투입 단계 (1이 가장 급함).
  */
 
-/** 모든 프롬프트 끝에 붙는 스타일 고정 문구 — 한 게임처럼 보이게 하는 핵심 */
-export const STYLE =
+/**
+ * 스타일 고정 문구 — 한 게임처럼 보이게 하는 핵심.
+ *
+ * 장면용과 오브젝트용을 나눈다. 공용 문구에 "기와 지붕"을 넣었더니 인물 어깨 뒤와
+ * 아이콘 배경에까지 기와가 끼어들어, 건축이 주제인 것에만 남긴다.
+ */
+const STYLE_BASE =
   'painterly anime game art, soft cel shading, elegant Korean traditional aesthetic, ' +
   'dancheong color palette of deep indigo vermilion red jade green and gold leaf, ' +
-  'grey curved Korean giwa roof tiles, high detail, ' +
-  'no text, no watermark, no UI, no letters, no signature';
+  'high detail, no text, no watermark, no UI, no letters, no signature';
+
+/** 배경·현판 등 건축이 주제인 것 */
+export const STYLE = `${STYLE_BASE}, grey curved Korean giwa roof tiles`;
+
+/** 인물·아이콘 등 단독 오브젝트 — 배경 요소가 끼어들면 안 된다 */
+export const STYLE_OBJECT =
+  `${STYLE_BASE}, plain empty background with no scenery, no buildings, no roof, ` +
+  'no landscape, nothing behind the subject';
 
 /** 배경 공통 — 인물 금지 */
 const BG = 'digital painting, anime game background art, wide cinematic composition, no people, no characters';
@@ -104,7 +116,7 @@ const characters = CHARACTERS.flatMap((c) => [
     out: [1600, 2400],
     alpha: true,
     format: 'png',
-    prompt: `original character concept art, full body anime illustration, ${c.look}, standing pose facing slightly to the side, full body visible from head to toe with the feet included, centered in frame, detailed embroidered fabric patterns, ${STYLE}, original design, transparent background`,
+    prompt: `original character concept art, full body anime illustration, ${c.look}, standing pose facing slightly to the side, full body visible from head to toe with the feet included, centered in frame, detailed embroidered fabric patterns, ${STYLE_OBJECT}, original design, transparent background`,
   },
   {
     id: `char-${c.id}-bust`,
@@ -116,7 +128,7 @@ const characters = CHARACTERS.flatMap((c) => [
     format: 'png',
     /** 전신을 레퍼런스로 넣어 같은 인물을 유지한다 */
     ref: `char-${c.id}-full.png`,
-    prompt: `the same character, bust shot from the chest up, facing the viewer, centered, calm expression, ${STYLE}, transparent background`,
+    prompt: `the same character, bust shot from the chest up, facing the viewer, centered, calm expression, only the person and nothing else, ${STYLE_OBJECT}, transparent background`,
   },
   {
     id: `char-${c.id}-sd`,
@@ -127,7 +139,7 @@ const characters = CHARACTERS.flatMap((c) => [
     alpha: true,
     format: 'png',
     ref: `char-${c.id}-full.png`,
-    prompt: `the same character redrawn as a chibi super deformed two-head-tall version, cute, simplified, standing, full body, ${STYLE}, transparent background`,
+    prompt: `the same character redrawn as a chibi super deformed two-head-tall version, cute, simplified, standing, full body, only the person and nothing else, ${STYLE_OBJECT}, transparent background`,
   },
   {
     id: `char-${c.id}-cutin`,
@@ -138,7 +150,7 @@ const characters = CHARACTERS.flatMap((c) => [
     alpha: true,
     format: 'png',
     ref: `char-${c.id}-full.png`,
-    prompt: `the same character, upper body dynamic pose, dramatic rim lighting, confident expression, motion in the hair and sleeves, ${STYLE}, transparent background`,
+    prompt: `the same character, upper body dynamic pose, dramatic rim lighting, confident expression, motion in the hair and sleeves, only the person and nothing else, ${STYLE_OBJECT}, transparent background`,
   },
 ]);
 
@@ -186,8 +198,14 @@ const uiParts = [
 
 // ── 아이콘 ────────────────────────────────────────────────────────────
 
+/**
+ * 아이콘은 작게 표시되므로 소재 하나만 크게. "배지 안의 작은 풍경"으로 지시했더니
+ * 배지 안에 산·해·지붕까지 그려 넣어 작게 줄이면 뭉개졌다 — 단독 오브젝트로 바꾼다.
+ */
 const ICON_STYLE =
-  'a single game interface icon, small illustrated scene inside a round Korean lacquer badge with a thin gold rim, clean silhouette, readable at small size, centered';
+  'a single game interface icon, one object only, filling the frame, bold clean silhouette, ' +
+  'thick readable shapes that stay legible when shrunk to 32 pixels, centered, ' +
+  'no badge, no circular frame, no background scenery';
 
 const icon = (id, subject, stage = 2) => ({
   id,
@@ -198,7 +216,7 @@ const icon = (id, subject, stage = 2) => ({
   out: [256, 256],
   alpha: true,
   format: 'png',
-  prompt: `${ICON_STYLE}, ${subject}, ${STYLE}, transparent background`,
+  prompt: `${ICON_STYLE}, ${subject}, ${STYLE_OBJECT}, transparent background`,
 });
 
 const icons = [
@@ -208,7 +226,7 @@ const icons = [
   icon('icon-nav-friend', 'two interlocking Korean norigae decorative knots'),
   icon('icon-nav-rules', 'an open traditional Korean thread-bound book'),
   icon('icon-nav-wish', 'a haetae guardian lion stone statue'),
-  icon('icon-yeopjeon', 'a single Korean brass yeopjeon coin with a square hole in the center, three-quarter view', 1),
+  icon('icon-yeopjeon', 'one Korean brass yeopjeon coin, round with a square hole through the center, worn patina, seen straight on, nothing else in frame', 1),
   icon('icon-plus', 'a plus sign carved on a small round gold plate', 2),
   icon('icon-riichi-stick', 'a slim white betting stick with a single red dot at the center, lying diagonally', 2),
   icon('icon-point-stick', 'a slim white scoring stick with three small red dots, lying diagonally', 3),

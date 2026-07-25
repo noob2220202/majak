@@ -135,6 +135,12 @@ export function RoundResultOverlay({
       className="absolute inset-0 z-30 grid place-items-center overflow-hidden bg-ink/88 p-4"
       onClick={onContinue}
     >
+      {/* 결과 배경 원화 — 병풍 연출보다 뒤에 깔린다 */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-20 bg-cover bg-[center_40%] opacity-70"
+        style={{ backgroundImage: 'url(/art/bg-result.webp)' }}
+        aria-hidden="true"
+      />
       {/* 만관 이상: 병풍이 펼쳐짐 / 역만: 금박 파티클 */}
       {big >= 1 && (
         <Byeongpung gold={isYakuman || big >= 5} simplified={simplified} effectId={winEffect} />

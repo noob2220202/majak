@@ -10,3 +10,8 @@ playwright-report/
 .env
 .env.*
 .vite/
+
+# API 키는 어떤 형태로도 리포에 들어오지 않게 한다
+*.key
+secrets/
+**/openai-key*

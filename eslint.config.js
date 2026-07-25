@@ -27,7 +27,17 @@ export default tseslint.config(
     // 빌드 스크립트는 Node 환경 (브라우저 전역이 아님)
     files: ['**/scripts/**/*.{js,mjs,ts}', '**/*.config.{js,ts,mjs}'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', __dirname: 'readonly' },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        __dirname: 'readonly',
+        setTimeout: 'readonly',
+        fetch: 'readonly',
+        Buffer: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+      },
     },
   },
   {

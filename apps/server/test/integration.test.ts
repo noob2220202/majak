@@ -119,6 +119,28 @@ describe('봇 지연 + settings.auto 동시 진입 (회귀: 봇 이중 착수 �
   }, 90000);
 });
 
+describe('국 결과 표시 중 재진입 (회귀: 결과 타이머 이중 예약)', () => {
+  it('결과 대기 중 settings.auto가 반복돼도 다음 국이 정상 진행된다', async () => {
+    // 결과 지연이 길면 그 사이 step()이 다시 호출될 수 있다. 그때 handleRoundEnd가
+    // 재진입해 advanceGame이 두 번 실행되며 "종료된 국이 없음"으로 죽던 버그의 회귀.
+    const { url } = await startServer({ botDelayMs: 0, resultDelayMs: 400 });
+    const socket = connect(url);
+    await hello(socket, '재진입');
+    const started = once<GameStartView>(socket, 'game.start');
+    socket.emit('lobby.practice');
+    await started;
+    autoAll(socket);
+
+    // 결과가 뜰 때마다 자동설정을 다시 보내 step() 재진입을 유도
+    socket.on('game.roundResult', () => {
+      for (let i = 0; i < 3; i++) autoAll(socket);
+    });
+
+    const end = await once<GameEndView>(socket, 'game.end', 90000);
+    expect(end.standings).toHaveLength(4);
+  }, 120000);
+});
+
 describe('연습 대국 (봇 3) 완주', () => {
   it('game.start → 진행 → game.end, 시드 커밋-공개 검증', async () => {
     const { url } = await startServer();

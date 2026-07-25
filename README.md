@@ -2,7 +2,7 @@
 
 한국 전통 미학을 입힌 온라인 4인 리치마작 웹게임. 전체 개발 계획은 [PLAN.md](./PLAN.md)를 참고하세요.
 
-현재 상태: **Phase 3 — 클라이언트 코어 완료** (브라우저에서 실제 대국 가능, 디자인 폴리시는 Phase 4)
+현재 상태: **Phase 4 — 디자인·연출 완료** (전 화면 디자인 시스템·연출·사운드 적용, 전 구간 60fps)
 
 ## 개발 실행
 
@@ -27,6 +27,7 @@ pnpm dev
 | `pnpm lint` / `pnpm typecheck` | ESLint / tsc --noEmit |
 | `pnpm build` | 클라 정적 빌드 + 서버 번들 |
 | `pnpm --filter @cheongiwa/client e2e` | Playwright E2E 스모크 (브라우저 필요) |
+| `cd apps/client && node scripts/build-fonts.mjs` | 로컬 폰트 서브셋 재생성 (fonttools 필요) |
 
 ## 구조 (pnpm 모노레포)
 

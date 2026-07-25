@@ -470,6 +470,9 @@ export class GameSession {
   // ── 국·대국 종료 ──
 
   private handleRoundEnd(): void {
+    // step()은 여러 경로(자동설정·봇 타이머·액션)에서 호출되므로 중복 진입을 막는다.
+    // 그렇지 않으면 결과 타이머가 두 번 예약되어 다음 국을 두 번 진행하려다 실패한다.
+    if (this.resultTimer) return;
     const round = this.round();
     this.flushEvents();
     // 남은 결정 대기 정리
@@ -480,6 +483,7 @@ export class GameSession {
     this.broadcast('game.roundResult', view);
 
     const proceed = (): void => {
+      this.resultTimer = null;
       if (this.ended) return;
       advanceGame(this.game); // 아가리야메는 자동 종료 선택 (ASSUMPTIONS)
       if (this.game.phase === 'ended') {

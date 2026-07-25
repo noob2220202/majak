@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ShopItem, ShopSlot } from '@cheongiwa/protocol';
 import { Button } from '../components/ui';
-import { DancheongBorder, Yeopjeon } from '../motifs/Motifs';
+import { ArtBack, ArtCorners, ArtTab, ArtTitle } from '../components/art';
+import { DancheongBorder } from '../motifs/Motifs';
 import { getSocket } from '../net/socket';
 import { useGame } from '../store/game';
 import { Tile } from '../tiles/Tile';
@@ -97,10 +98,19 @@ function ItemCard({ item }: { item: ShopItem }) {
 
   return (
     <div
-      className={`tex-hanji relative overflow-hidden rounded-xl p-3 ring-1 transition ${
+      className={`tex-hanji relative rounded-xl p-3 ring-1 transition ${
         equipped ? 'bg-gold/15 ring-gold/50' : 'bg-hanji/8 ring-hanji/12'
       }`}
     >
+      {/* 장착 중이면 목패를 걸어둔다 */}
+      {equipped && (
+        <img
+          src="/art/tag-inuse.webp"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-1 -top-3 z-10 w-9 drop-shadow-[0_3px_6px_rgba(0,0,0,0.6)]"
+        />
+      )}
       <Preview item={item} />
       <div className="mt-2">
         <p className="flex items-center justify-between font-semibold text-hanji">
@@ -129,7 +139,7 @@ function ItemCard({ item }: { item: ShopItem }) {
           className="mt-1 flex h-9 w-full items-center justify-center gap-1.5 py-0 text-sm"
           onClick={() => getSocket().emit('shop.buy', { itemId: item.id })}
         >
-          <Yeopjeon size={13} />
+          <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-4" />
           {item.price.toLocaleString()}냥
         </Button>
       )}
@@ -179,40 +189,29 @@ export function Shop() {
           <DancheongBorder height={5} />
         </div>
 
-        <div className="flex items-center justify-between px-5 pb-3 pt-5">
+        <ArtCorners size={38} />
+
+        <div className="flex items-start justify-between px-5 pb-2 pt-6">
           <div>
-            <h2
-              className="text-3xl font-black tracking-widest text-hanji"
-              style={{ fontFamily: 'var(--font-serif-kr)' }}
-            >
-              저잣거리
-            </h2>
-            <p className="mt-0.5 text-xs text-hanji/45">
+            <ArtTitle className="w-[clamp(150px,20vw,220px)]">저잣거리</ArtTitle>
+            <p className="mt-1 text-xs text-hanji/45">
               파는 것은 전부 치레거리입니다 — 승패에는 영향이 없습니다
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 rounded-full bg-ink/50 px-3 py-1.5 text-sm font-bold text-gold-hi ring-1 ring-gold/25">
-              <Yeopjeon size={15} />
+            <span className="flex items-center gap-1.5 rounded-full bg-ink/50 py-1.5 pl-2 pr-3 text-sm font-bold text-gold-hi ring-1 ring-gold/25">
+              <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-6" />
               {(wallet?.balance ?? 0).toLocaleString()}냥
             </span>
-            <Button variant="ghost" onClick={() => setShopOpen(false)}>
-              닫기
-            </Button>
+            <ArtBack label="닫기" onClick={() => setShopOpen(false)} />
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-hanji/10 px-5">
+        <div className="flex items-end gap-0.5 border-b border-hanji/10 px-5">
           {SLOT_ORDER.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSlot(s)}
-              className={`rounded-t-lg px-4 py-2 text-sm font-semibold transition ${
-                slot === s ? 'bg-hanji/10 text-hanji' : 'text-hanji/45 hover:text-hanji/75'
-              }`}
-            >
+            <ArtTab key={s} active={slot === s} onClick={() => setSlot(s)}>
               {SLOT_LABEL[s]}
-            </button>
+            </ArtTab>
           ))}
         </div>
 

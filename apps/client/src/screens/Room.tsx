@@ -5,6 +5,7 @@ import { Button, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
 import { Scene } from './Scene';
+import { ArtBack, ArtCta, ArtOption, ArtTitle } from '../components/art';
 import { DancheongBorder, Yeopjeon } from '../motifs/Motifs';
 
 const WIND_SEAT = ['동', '남', '서', '북'];
@@ -80,16 +81,15 @@ function RulesPanel({ rules, isHost }: { rules: RuleSettings; isHost: boolean })
       <h3 className="mb-3 pt-2 font-semibold text-hanji">룰 설정</h3>
       <div className="mb-3 flex gap-2">
         {(['hanchan', 'tonpuu'] as const).map((g) => (
-          <button
-            key={g}
-            disabled={!isHost}
-            onClick={() => patch({ gameLength: g })}
-            className={`flex-1 rounded-lg py-2 text-sm font-semibold transition disabled:opacity-70 ${
-              rules.gameLength === g ? 'bg-gold text-ink' : 'bg-hanji/10 text-hanji/70'
-            }`}
-          >
-            {g === 'hanchan' ? '반장전 (동·남)' : '동풍전'}
-          </button>
+          <div key={g} className="flex-1">
+            <ArtOption
+              active={rules.gameLength === g}
+              disabled={!isHost}
+              onClick={() => patch({ gameLength: g })}
+            >
+              {g === 'hanchan' ? '반장전' : '동풍전'}
+            </ArtOption>
+          </div>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -135,7 +135,9 @@ export function Room() {
       <div className="mx-auto max-w-3xl px-4 pb-10 pt-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-sm text-hanji/60">{room.practice ? '연습' : '친선'} 방</p>
+            <ArtTitle className="mb-1 w-[clamp(140px,18vw,200px)]">
+              {room.practice ? '연습 방' : '친선 방'}
+            </ArtTitle>
             <button
               onClick={copyCode}
               className="flex items-center gap-2 text-3xl font-black tracking-[0.3em] text-hanji"
@@ -147,9 +149,7 @@ export function Room() {
               </span>
             </button>
           </div>
-          <Button variant="ghost" onClick={() => send.roomLeave()}>
-            나가기
-          </Button>
+          <ArtBack label="나가기" onClick={() => send.roomLeave()} />
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -170,13 +170,12 @@ export function Room() {
                 >
                   봇 추가 ({room.members.filter((m) => m.isBot).length}명)
                 </Button>
-                <Button
-                  className="py-3 text-lg"
-                  disabled={!humansReady}
-                  onClick={() => send.roomStart()}
-                >
-                  대국 시작 {room.members.length < 4 ? '(빈자리 봇 충원)' : ''}
-                </Button>
+                <ArtCta disabled={!humansReady} onClick={() => send.roomStart()}>
+                  대국 시작
+                </ArtCta>
+                {room.members.length < 4 && (
+                  <p className="text-center text-xs text-hanji/50">빈자리는 봇으로 채웁니다</p>
+                )}
                 {!humansReady && (
                   <p className="text-center text-xs text-hanji/50">
                     참가자 전원의 준비를 기다리는 중

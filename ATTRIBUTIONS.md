@@ -29,6 +29,11 @@
 | 캐릭터 「단」 전신·반신·치비 | `char-dan-*.png` | OpenAI `gpt-image-1.5` (high, 투명) | 2026-07-25 |
 | 메뉴 현판 4종 | `plaque-menu-*.png` | OpenAI `gpt-image-1.5` (high, 투명) | 2026-07-25 |
 | 엽전 아이콘 | `icon-yeopjeon.png` | OpenAI `gpt-image-1.5` (high, 투명) | 2026-07-25 |
+| 캐릭터 「매·설·루」 전신 | `char-{mae,seol,ru}-full.png` | OpenAI `gpt-image-1.5` (high, 투명) | 2026-07-25 |
+| 배경 2종 (로비 야경·로딩) | `bg-lobby-night.jpg` · `bg-loading.jpg` | OpenAI `gpt-image-2` (medium) | 2026-07-25 |
+| 프레임 11종 (모달·사이드·모서리·도라판·제목현판·아바타틀 2·카드틀·탭 2·걸개) | `panel-*` · `plaque-title` · `frame-*` · `tab-*` · `tag-inuse` | OpenAI `gpt-image-1.5` (medium, 투명) | 2026-07-25 |
+| 버튼 3종 | `btn-{back,cta,option-off}.png` | OpenAI `gpt-image-1.5` (medium, 투명) | 2026-07-25 |
+| 아이콘 12종 | `icon-*.png` | OpenAI `gpt-image-1.5` (medium, 투명) | 2026-07-25 |
 
 - **전량 오리지널 생성물**이다. 프롬프트에 타 게임명·타 게임 캐릭터명을 넣지 않았고, 참고작의
   식별 요소(캐릭터 조합·문양·색 배치)를 재현하지 않았다 (§9-1).

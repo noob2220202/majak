@@ -11,6 +11,12 @@ import { motion } from 'framer-motion';
 
 export type SceneId = 'lobby' | 'room' | 'hall' | 'quarters' | 'result';
 
+/** 18~06시에는 로비를 야경으로 바꾼다 */
+const isNight = (): boolean => {
+  const h = new Date().getHours();
+  return h >= 18 || h < 6;
+};
+
 const SRC: Record<SceneId, string> = {
   lobby: '/art/bg-lobby.webp',
   room: '/art/bg-room.webp',
@@ -61,12 +67,13 @@ export const Scene = memo(function Scene({
   className?: string;
 }) {
   const { position, scrim } = TREATMENT[id];
+  const src = id === 'lobby' && isNight() ? '/art/bg-lobby-night.webp' : SRC[id];
 
   return (
     <div className={`relative min-h-dvh overflow-hidden bg-night ${className}`}>
       <div
         className="absolute inset-0 bg-cover"
-        style={{ backgroundImage: `url(${SRC[id]})`, backgroundPosition: position }}
+        style={{ backgroundImage: `url(${src})`, backgroundPosition: position }}
       />
       <div className="absolute inset-0" style={{ background: scrim }} />
 

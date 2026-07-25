@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameActionPayload } from '@cheongiwa/protocol';
 import type { TileId } from '@cheongiwa/engine';
 import { Button } from '../../components/ui';
+import { ArtIconButton } from '../../components/art';
 import { send } from '../../net/socket';
 import { useGame } from '../../store/game';
 import { unlockAudio } from '../../audio/sfx';
@@ -50,7 +51,14 @@ export function GameScreen() {
 
   if (!game) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-felt text-hanji">
+      <div
+        className="grid min-h-dvh place-items-center bg-night text-hanji"
+        style={{
+          backgroundImage: 'url(/art/bg-loading.webp)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         <div className="text-center">
           <p className="text-lg">대국 정보를 불러오는 중…</p>
           <Button variant="ghost" className="mt-4" onClick={() => send.syncRequest()}>
@@ -92,10 +100,8 @@ export function GameScreen() {
     >
       {/* 상단 바 */}
       <div className="mx-auto mb-2 flex max-w-6xl items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" className="px-3 py-1.5 text-sm" onClick={() => send.syncRequest()}>
-            동기화
-          </Button>
+        <div className="flex items-center gap-3">
+          <ArtIconButton icon="icon-game-sync" label="동기화" size={34} onClick={() => send.syncRequest()} />
           {connection !== 'connected' && (
             <span className="rounded bg-dan-red/30 px-2 py-1 text-xs text-hanji">
               재연결 중…

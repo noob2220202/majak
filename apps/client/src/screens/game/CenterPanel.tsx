@@ -33,14 +33,23 @@ export function CenterPanel({ round }: { round: RoundStartView }) {
           </span>
         )}
       </div>
-      <div className="mt-2 flex items-center gap-1 rounded-lg bg-ink/50 px-2 py-1.5">
-        <span className="mr-1 text-[10px] text-hanji/50">도라</span>
-        {round.doraIndicators.map((kind, i) => (
-          <Tile key={i} kind={kind} width={18} />
-        ))}
-        {Array.from({ length: Math.max(0, 1 - round.doraIndicators.length) }).map((_, i) => (
-          <Tile key={`b${i}`} faceDown width={18} backId={myBack} />
-        ))}
+      {/* 도라 표시패 — 원화 슬롯판 위에 실제 패를 올린다. 빈 칸은 아직 뒤집히지 않은 자리다 */}
+      <div className="relative mt-1.5 w-[186px]" role="group" aria-label="도라 표시패">
+        <img
+          src="/art/panel-dora.webp"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none w-full"
+          style={{ aspectRatio: 490 / 178 }}
+        />
+        <div className="absolute inset-x-[6%] bottom-[24%] top-[36%] flex items-center justify-center gap-[2px]">
+          {round.doraIndicators.map((kind, i) => (
+            <Tile key={i} kind={kind} width={21} />
+          ))}
+          {Array.from({ length: Math.max(0, 5 - round.doraIndicators.length) }).map((_, i) => (
+            <Tile key={`b${i}`} faceDown width={21} backId={myBack} dimmed />
+          ))}
+        </div>
       </div>
     </div>
   );

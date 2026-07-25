@@ -6,6 +6,7 @@ import { useGame } from '../store/game';
 import { unlockAudio } from '../audio/sfx';
 import { Scene } from './Scene';
 import { Plaque } from '../components/Plaque';
+import { ArtIconButton } from '../components/art';
 import { Sumaksae, Yeopjeon } from '../motifs/Motifs';
 
 function AuthCard() {
@@ -63,6 +64,14 @@ function AuthCard() {
   );
 }
 
+/** 로비에 세울 수 있는 캐릭터. 클릭하면 다음 사람으로 넘어간다 (표시 전용) */
+const CAST = [
+  { id: 'dan', name: '단' },
+  { id: 'mae', name: '매' },
+  { id: 'seol', name: '설' },
+  { id: 'ru', name: '루' },
+] as const;
+
 /** 상단 현판: 엽전 잔액 + 등급 + 저잣거리 입구 (§6.3) */
 function WalletBar() {
   const wallet = useGame((s) => s.wallet);
@@ -85,13 +94,12 @@ function WalletBar() {
         <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-6" />
         {(wallet?.balance ?? 0).toLocaleString()}
       </span>
-      <button
+      <ArtIconButton
+        icon="icon-nav-shop"
+        label="저잣거리"
+        size={38}
         onClick={() => setShopOpen(true)}
-        className="rounded-lg bg-giwa px-3 py-1.5 text-sm font-semibold text-hanji ring-1 ring-gold/30 transition hover:brightness-110"
-        style={{ fontFamily: 'var(--font-serif-kr)' }}
-      >
-        저잣거리
-      </button>
+      />
     </div>
   );
 }
@@ -183,7 +191,20 @@ function MainMenu() {
     >
       <div className="mb-2 flex items-center justify-between rounded-lg bg-ink/55 px-4 py-2 ring-1 ring-gold/25">
         <span className="flex items-center gap-2 font-semibold text-hanji">
-          <Yeopjeon size={15} />
+          <span className="relative block size-9 shrink-0">
+            <img
+              src="/art/char-dan-bust.webp"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-[18%] size-[64%] rounded-full object-cover object-top"
+            />
+            <img
+              src="/art/frame-avatar.webp"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+          </span>
           {nickname}
         </span>
         {stats && (
@@ -241,6 +262,8 @@ export function Lobby() {
   const connection = useGame((s) => s.connection);
   const userId = useGame((s) => s.userId);
   const simplified = useGame((s) => s.simplified);
+  const [castIndex, setCastIndex] = useState(0);
+  const cast = CAST[castIndex] ?? CAST[0];
 
   return (
     <Scene id="lobby" simplified={simplified}>
@@ -257,23 +280,35 @@ export function Lobby() {
         </>
       )}
 
-      {/* 대표 캐릭터 — 좌하단, 클릭 대상이 아니므로 이벤트를 통과시킨다 */}
+      {/* 마작상 — 클릭하면 다음 사람으로 바뀐다. 판정에 영향 없는 순수 표시 요소 */}
       {userId && (
-        <motion.img
-          src="/art/char-dan-full.webp"
-          alt=""
-          aria-hidden="true"
-          initial={{ opacity: 0, x: -28, scale: 1.02 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
-          className="pointer-events-none absolute bottom-0 left-[1%] z-10 hidden h-[86vh] max-h-[860px] object-contain object-bottom md:block"
-          style={{ filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.55))' }}
-        />
+        <button
+          type="button"
+          onClick={() => setCastIndex((i) => (i + 1) % CAST.length)}
+          aria-label={`마작상 ${cast.name} — 눌러서 바꾸기`}
+          title={`${cast.name} — 눌러서 바꾸기`}
+          className="absolute bottom-0 left-[1%] z-20 hidden h-[86vh] max-h-[860px] w-[clamp(220px,26vw,430px)] md:block"
+        >
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={cast.id}
+              src={`/art/char-${cast.id}-full.webp`}
+              alt=""
+              aria-hidden="true"
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 18 }}
+              transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+              className="h-full w-full object-contain object-bottom"
+              style={{ filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.55))' }}
+            />
+          </AnimatePresence>
+        </button>
       )}
 
-      <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-8 md:items-end md:pr-[6vw]">
-        {userId ? <MainMenu /> : <AuthCard />}
-        <footer className="mt-6">
+      <main className="pointer-events-none relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-8 md:items-end md:pr-[6vw]">
+        <div className="pointer-events-auto w-full md:w-auto">{userId ? <MainMenu /> : <AuthCard />}</div>
+        <footer className="pointer-events-auto mt-6">
           <ConnectionBadge status={connection} />
         </footer>
       </main>

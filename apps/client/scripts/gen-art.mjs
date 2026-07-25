@@ -69,6 +69,9 @@ const estCost = (item) =>
 const spent = { tokens: 0, images: 0 };
 const spentUsd = () => (spent.tokens / 1_000_000) * USD_PER_MTOK;
 
+/** 잔액 소진 — 재시도·후속 생성 모두 의미가 없어 전체를 멈춘다 */
+class QuotaExhausted extends Error {}
+
 // ── 유틸 ──────────────────────────────────────────────────────────────
 
 const exists = async (p) => {
@@ -99,8 +102,14 @@ async function callApi(pathname, body, { attempt = 0 } = {}) {
   }
 
   if (res.status === 429 || res.status >= 500) {
-    if (attempt >= 4) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
-    await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
+    const text = await res.text();
+    // 잔액 소진은 재시도해도 소용없다. 59장을 줄줄이 실패시키지 말고 즉시 중단한다.
+    if (/insufficient_quota|billing|exceeded your current quota/i.test(text)) {
+      throw new QuotaExhausted(text.slice(0, 200));
+    }
+    if (attempt >= 4) throw new Error(`${res.status} ${text.slice(0, 200)}`);
+    // 조직 한도가 분당 5장이라 레이트리밋은 넉넉히 기다린다
+    await new Promise((r) => setTimeout(r, 15_000 * (attempt + 1)));
     return callApi(pathname, body, { attempt: attempt + 1 });
   }
   if (!res.ok) {
@@ -245,6 +254,7 @@ async function main() {
 
   const failed = [];
   const skipped = [];
+  let quotaOut = false;
   let done = 0;
   const queue = [...list];
 
@@ -268,6 +278,12 @@ async function main() {
         done++;
         console.log(`  + ${item.file} (${done}/${list.length})`);
       } catch (error) {
+        if (error instanceof QuotaExhausted) {
+          quotaOut = true;
+          queue.length = 0;
+          console.error(`\n  !! 잔액 소진으로 중단합니다: ${error.message}`);
+          return;
+        }
         failed.push({ id: item.id, message: error instanceof Error ? error.message : String(error) });
         console.error(`  ! ${item.file} 실패: ${error instanceof Error ? error.message : error}`);
       }
@@ -288,6 +304,7 @@ async function main() {
     `사용량: ${spent.images}콜 · 출력 ${spent.tokens.toLocaleString()}토큰 ` +
       `· 실지출 약 $${spentUsd().toFixed(2)}`,
   );
+  if (quotaOut) console.log('\n잔액이 떨어져 나머지는 생성하지 못했습니다.');
   if (skipped.length > 0) {
     // 예산 때문에 건너뛴 것을 반드시 밝힌다 — 조용히 빠지면 "다 됐다"로 읽힌다
     console.log(`\n예산($${options.budget}) 도달로 건너뜀 ${skipped.length}장:`);

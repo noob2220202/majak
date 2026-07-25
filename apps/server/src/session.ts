@@ -41,6 +41,8 @@ export interface SessionSeatInit {
 }
 
 interface SeatState extends SessionSeatInit {
+  /** 마지막 이모티콘 전송 시각 (쿨다운용) */
+  lastEmoteAt: number;
   disconnectedAt: number | null;
   abandoned: boolean;
   auto: AutoSettings;
@@ -69,6 +71,9 @@ export const DEFAULT_SESSION_OPTIONS: SessionOptions = {
 };
 
 const sha256 = (v: string): string => createHash('sha256').update(v).digest('hex');
+
+/** 이모티콘 도배 방지 — 좌석당 최소 간격 */
+const EMOTE_COOLDOWN_MS = 3000;
 
 /** 프로필이 없는 좌석(봇 등)의 기본 표시값 */
 const DEFAULT_PROFILE: Omit<SeatProfileView, 'seat'> = {
@@ -105,6 +110,7 @@ export class GameSession {
   private readonly seats: SeatState[];
   private readonly smartBots: Bot[];
   private eventCursor = 0;
+  private emoteNonce = 0;
   private stepping = false;
   private pendingResult: RoundResultView | null = null;
   private resultTimer: NodeJS.Timeout | null = null;
@@ -135,6 +141,7 @@ export class GameSession {
       reserveMs: options.reserveMs,
       pendingSince: null,
       timer: null,
+      lastEmoteAt: 0,
     }));
     this.smartBots = this.seats.map(() => createBotV1());
     this.game = startGame({ rules, seed: this.seed });
@@ -158,6 +165,19 @@ export class GameSession {
   seatOfUser(userId: string): Seat | null {
     const idx = this.seats.findIndex((s) => s.userId === userId);
     return idx >= 0 ? (idx as Seat) : null;
+  }
+
+  /**
+   * 이모티콘 전송 (§7 Phase 5 이모티콘 소통).
+   * 도배를 막기 위해 좌석당 쿨다운을 둔다. 보유 여부는 호출 측(app)이 검증한다.
+   */
+  sendEmote(seat: Seat, itemId: string, now = Date.now()): boolean {
+    const s = this.seats[seat] as SeatState;
+    if (now - s.lastEmoteAt < EMOTE_COOLDOWN_MS) return false;
+    s.lastEmoteAt = now;
+    this.emoteNonce++;
+    this.broadcast('emote.show', { seat, itemId, nonce: this.emoteNonce });
+    return true;
   }
 
   /** 서버가 대신 두는 좌석인가 (봇 / 연결 끊긴 인간) */

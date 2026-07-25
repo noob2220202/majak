@@ -47,6 +47,7 @@ export { SERVER_EVENTS } from './views';
 export {
   SHOP_SLOTS,
   RANK_TIERS,
+  EmoteSendSchema,
   ShopBuySchema,
   ShopEquipSchema,
 } from './economy';
@@ -61,5 +62,6 @@ export type {
   RankView,
   ShopBuy,
   ShopEquip,
+  EmoteShowView,
   SeatProfileView,
 } from './economy';

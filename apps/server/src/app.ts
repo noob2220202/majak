@@ -14,6 +14,7 @@ import {
   RoomCodeSchema,
   RoomReadySchema,
   RuleSettingsSchema,
+  EmoteSendSchema,
   ShopBuySchema,
   ShopEquipSchema,
   type AuthWelcome,
@@ -368,6 +369,32 @@ export async function buildServer(options: BuildServerOptions = {}) {
         return;
       }
       socket.emit('wallet.state', result.wallet);
+    });
+
+    on('emote.send', EmoteSendSchema, (payload) => {
+      const userId = requireAuth();
+      if (!userId) return;
+      const sessionId = sessionByUser.get(userId);
+      const session = sessionId ? sessions.get(sessionId) : undefined;
+      if (!session) {
+        sendError(socket, 'NOT_IN_GAME', '진행 중인 대국이 없습니다');
+        return;
+      }
+      const seat = session.seatOfUser(userId);
+      if (seat === null) return;
+      // 산 것만 쓸 수 있다 — 무료 기본품은 CATALOG 가격 0으로 판별한다
+      const item = CATALOG.find((i) => i.id === payload.itemId && i.slot === 'emote');
+      if (!item) {
+        sendError(socket, 'BAD_REQUEST', '없는 이모티콘입니다');
+        return;
+      }
+      const owned = item.price === 0 || walletView(db, userId).unlocked.includes(item.id);
+      if (!owned) {
+        sendError(socket, 'BAD_REQUEST', '보유하지 않은 이모티콘입니다');
+        return;
+      }
+      // 쿨다운에 걸리면 조용히 무시한다 — 도배 방지이지 오류가 아니다
+      session.sendEmote(seat, item.id);
     });
 
     on('sync.request', null, () => {

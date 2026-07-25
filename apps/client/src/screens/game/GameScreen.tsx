@@ -9,6 +9,7 @@ import { unlockAudio } from '../../audio/sfx';
 import { Announce } from '../../effects/Announce';
 import { Board } from './Board';
 import { CallBar } from './CallBar';
+import { EmoteBar } from './EmoteBar';
 import { GameEndOverlay } from './GameEndOverlay';
 import { MyHand } from './MyHand';
 import { RoundResultOverlay } from './RoundResultOverlay';
@@ -108,7 +109,10 @@ export function GameScreen() {
             </span>
           )}
         </div>
-        <span className="text-xs text-hanji/40">시드 {game.seedHash.slice(0, 10)}…</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-hanji/40">시드 {game.seedHash.slice(0, 10)}…</span>
+          <EmoteBar />
+        </div>
       </div>
 
       <div className="mx-auto flex max-w-6xl gap-3">

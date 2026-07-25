@@ -9,6 +9,7 @@ import {
 } from '@cheongiwa/engine';
 import type {
   AuthWelcome,
+  EmoteShowView,
   RankView,
   RewardsView,
   SeatProfileView,
@@ -29,6 +30,7 @@ import { getSocket } from '../net/socket';
 import { describeEvent } from './eventText';
 import { playSfx, setMuted, setVolume } from '../audio/sfx';
 import type { AnnounceItem } from '../effects/Announce';
+import type { EmoteBalloon } from '../effects/EmoteBubble';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 export type Screen = 'auth' | 'lobby' | 'room' | 'game';
@@ -100,6 +102,9 @@ interface GameStore {
   /** 방금 지급된 보상 (플로팅 표시 후 해제) */
   rewards: RewardsView | null;
   shopOpen: boolean;
+  /** 좌석별로 지금 떠 있는 이모티콘 (§7 이모티콘 소통) */
+  emotes: Record<number, EmoteBalloon | undefined>;
+  emotesMuted: boolean;
 
   // 설정
   auto: { autoWin: boolean; autoSkipCalls: boolean; autoTsumogiri: boolean };
@@ -115,6 +120,8 @@ interface GameStore {
   clearRewards(): void;
   /** 내가 장착한 코스메틱 (없으면 기본값) */
   equipped(slot: ShopSlot): string | undefined;
+  sendEmote(itemId: string): void;
+  setEmotesMuted(v: boolean): void;
   setAuto(next: Partial<GameStore['auto']>): void;
   toggleHints(): void;
   toggleSimplified(): void;
@@ -130,6 +137,7 @@ interface StoredPrefs {
   simplified?: boolean;
   muted?: boolean;
   volume?: number;
+  emotesMuted?: boolean;
 }
 
 function loadPrefs(): StoredPrefs {
@@ -189,6 +197,8 @@ export const useGame = create<GameStore>((set, get) => ({
   rank: null,
   rewards: null,
   shopOpen: false,
+  emotes: {},
+  emotesMuted: prefs.emotesMuted ?? false,
   auto: { ...emptyAuto },
   hints: prefs.hints ?? true,
   simplified: prefs.simplified ?? false,
@@ -203,6 +213,13 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   equipped(slot) {
     return get().wallet?.loadout[slot];
+  },
+  sendEmote(itemId) {
+    getSocket().emit('emote.send', { itemId });
+  },
+  setEmotesMuted(v) {
+    set({ emotesMuted: v });
+    savePrefs({ ...loadPrefs(), emotesMuted: v });
   },
   setAuto(next) {
     const auto = { ...get().auto, ...next };
@@ -489,6 +506,7 @@ export function initNetworking(): void {
       queue: null,
       fillOffer: null,
       gameEnd: null,
+      emotes: {},
       game: {
         gameId: view.gameId,
         mySeat: view.seat,
@@ -617,6 +635,17 @@ export function initNetworking(): void {
       get().game?.players ??
       snap.players.map((p) => ({ seat: p.seat, nickname: p.nickname, isBot: p.isBot }));
     set({ screen: 'game', game: snapshotToGame(snap, players) });
+  });
+
+  socket.on('emote.show', (e: EmoteShowView) => {
+    if (useGame.getState().emotesMuted) return;
+    set((st) => ({ emotes: { ...st.emotes, [e.seat]: e } }));
+    // 일정 시간 뒤 자기 것만 지운다 (그 사이 새 이모티콘이 오면 그게 남는다)
+    setTimeout(() => {
+      set((st) => (st.emotes[e.seat]?.nonce === e.nonce
+        ? { emotes: { ...st.emotes, [e.seat]: undefined } }
+        : {}));
+    }, 2600);
   });
 
   socket.on('wallet.state', (wallet: WalletView) => set({ wallet }));

@@ -4,6 +4,7 @@ import { useGame, type LocalGame } from '../../store/game';
 import { CenterPanel } from './CenterPanel';
 import { DiscardPile } from './DiscardPile';
 import { MeldRow } from './MeldRow';
+import { EmoteBubble } from '../../effects/EmoteBubble';
 import { OpponentHand } from './OpponentHand';
 import { SeatPlate } from './SeatPlate';
 import { relativePos, ROT, type RelPos } from './geometry';
@@ -49,6 +50,8 @@ export function Board({
   const positions: RelPos[] = ['self', 'right', 'top', 'left'];
   // 마작상은 내가 장착한 것으로 보인다 (§6.3 — 표시 전용)
   const table = tableStyle(useGame((s) => s.wallet?.loadout.table));
+  const emotes = useGame((s) => s.emotes);
+  const simplified = useGame((s) => s.simplified);
 
   return (
     <div
@@ -115,6 +118,7 @@ export function Board({
                 reserveRatio={active && seat.seat === game.mySeat ? reserveRatio : null}
                 profile={profile}
               />
+              <EmoteBubble balloon={emotes[seat.seat] ?? null} pos={pos} simplified={simplified} />
             </div>
           </div>
         );

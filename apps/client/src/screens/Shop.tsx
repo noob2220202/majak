@@ -63,29 +63,15 @@ function Preview({ item }: { item: ShopItem }) {
       </div>
     );
   }
-  // 이모티콘: 탈 실루엣 미리보기
-  const isGaksi = item.id.endsWith('gaksi');
+  // 이모티콘: 실제 탈 원화
   return (
-    <div className="grid place-items-center py-1">
-      <svg viewBox="0 0 100 100" width={62} height={62} aria-hidden="true">
-        <ellipse cx={50} cy={54} rx={32} ry={38} fill={isGaksi ? '#f0dcc8' : '#d8a06a'} />
-        <path
-          d={isGaksi ? 'M32 46 q8 -7 16 0' : 'M30 44 q10 -9 20 0'}
-          fill="none"
-          stroke="#2a2320"
-          strokeWidth={3}
-          strokeLinecap="round"
-        />
-        <path
-          d={isGaksi ? 'M56 46 q8 -7 16 0' : 'M54 44 q10 -9 20 0'}
-          fill="none"
-          stroke="#2a2320"
-          strokeWidth={3}
-          strokeLinecap="round"
-        />
-        <path d="M36 70 q14 12 28 0" fill="none" stroke="#8d3b2f" strokeWidth={4} strokeLinecap="round" />
-        {isGaksi && <circle cx={50} cy={22} r={7} fill="#c03b2e" />}
-      </svg>
+    <div className="grid h-[70px] place-items-center py-1">
+      <img
+        src={`/art/${item.id.replace('.', '-')}.webp`}
+        alt=""
+        aria-hidden="true"
+        className="max-h-full object-contain"
+      />
     </div>
   );
 }

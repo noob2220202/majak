@@ -24,10 +24,14 @@ export const CATALOG: ShopItem[] = [
   { id: 'winEffect.maehwa', slot: 'winEffect', name: '금박 매화', description: '금박 매화가 흩날린다', price: 2000 },
   { id: 'winEffect.cheongryong', slot: 'winEffect', name: '청룡 붓선', description: '푸른 붓선이 화면을 가른다', price: 3000 },
 
-  // 이모티콘 팩 (탈 모티프)
-  { id: 'emote.none', slot: 'emote', name: '없음', description: '이모티콘을 쓰지 않음 — 기본', price: 0 },
-  { id: 'emote.hahoe', slot: 'emote', name: '하회탈 8종', description: '너털웃음 짓는 하회탈', price: 1200 },
-  { id: 'emote.gaksi', slot: 'emote', name: '각시탈 8종', description: '단아한 각시탈', price: 1200 },
+  // 이모티콘 (탈 모티프) — 대국 중 팔레트에서 골라 띄운다.
+  // 낱개 판매다. "장착"은 팔레트 첫 자리에 올 탈을 고르는 것이고, 산 것은 전부 쓸 수 있다.
+  { id: 'emote.hahoe', slot: 'emote', name: '하회 양반탈', description: '너털웃음 — 기본', price: 0 },
+  { id: 'emote.gaksi', slot: 'emote', name: '각시탈', description: '수줍게 눈을 내리깐다', price: 600 },
+  { id: 'emote.choraengi', slot: 'emote', name: '초랭이탈', description: '짓궂게 씩 웃는다', price: 600 },
+  { id: 'emote.bune', slot: 'emote', name: '부네탈', description: '곁눈질로 능청스럽게', price: 800 },
+  { id: 'emote.imae', slot: 'emote', name: '이매탈', description: '턱 빠진 채 시무룩하게', price: 800 },
+  { id: 'emote.baekjeong', slot: 'emote', name: '백정탈', description: '눈을 부라린다', price: 1000 },
 ];
 
 const BY_ID = new Map(CATALOG.map((i) => [i.id, i]));
@@ -37,7 +41,7 @@ export const DEFAULT_LOADOUT: Record<ShopSlot, string> = {
   tileBack: 'tileBack.sumaksae',
   table: 'table.noirok',
   winEffect: 'winEffect.basic',
-  emote: 'emote.none',
+  emote: 'emote.hahoe',
 };
 
 export function findItem(itemId: string): ShopItem | undefined {

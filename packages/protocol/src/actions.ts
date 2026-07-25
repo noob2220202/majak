@@ -70,5 +70,6 @@ export const CLIENT_EVENTS = [
   'shop.buy',
   'shop.equip',
   'wallet.request',
+  'emote.send',
 ] as const;
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];

@@ -69,12 +69,23 @@ export interface RankView {
 // ── 클라 → 서버 요청 스키마 ────────────────────────────────────
 
 export const ShopBuySchema = z.object({ itemId: z.string().min(1).max(64) });
+/** 대국 중 이모티콘 전송 — 보유 여부는 서버가 검증한다 */
+export const EmoteSendSchema = z.object({ itemId: z.string().min(1).max(64) });
 export const ShopEquipSchema = z.object({
   slot: z.enum(SHOP_SLOTS),
   itemId: z.string().min(1).max(64),
 });
 export type ShopBuy = z.infer<typeof ShopBuySchema>;
+export type EmoteSend = z.infer<typeof EmoteSendSchema>;
 export type ShopEquip = z.infer<typeof ShopEquipSchema>;
+
+/** 누가 어떤 이모티콘을 띄웠는지 (전원에게 브로드캐스트) */
+export interface EmoteShowView {
+  seat: number;
+  itemId: string;
+  /** 같은 좌석이 연속으로 보내도 각각 표시되도록 구분 */
+  nonce: number;
+}
 
 /** 대국 좌석에 표시할 상대 프로필 (등급·장착 코스메틱) */
 export interface SeatProfileView {

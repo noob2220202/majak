@@ -266,6 +266,7 @@ export const SERVER_EVENTS = [
   'wallet.state',
   'wallet.rewards',
   'rank.state',
+  'emote.show',
   'server.error',
 ] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];

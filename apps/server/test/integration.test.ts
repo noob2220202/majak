@@ -481,3 +481,59 @@ describe('저잣거리·지갑 프로토콜 (§6.3)', () => {
     expect(start.profiles[botSeat]?.tier).toBeNull();
   }, 30000);
 });
+
+describe('이모티콘 소통 (§7 Phase 5)', () => {
+  it('보유하지 않은 이모티콘은 거부하고, 산 것은 전원에게 브로드캐스트된다', async () => {
+    const { url, app } = await startServer();
+    const socket = connect(url);
+    const welcome = await hello(socket, '탈꾼');
+
+    const started = once<GameStartView>(socket, 'game.start');
+    socket.emit('lobby.practice');
+    const start = await started;
+
+    // 보유하지 않은 유료 이모티콘 → 거부
+    const catalog = (await app.inject({ method: 'GET', url: '/api/shop/catalog' })).json() as Array<{
+      id: string;
+      slot: string;
+      price: number;
+    }>;
+    const paid = catalog.find((i) => i.slot === 'emote' && i.price > 0);
+    expect(paid).toBeDefined();
+    const rejected = once<ServerErrorView>(socket, 'server.error', 5000);
+    socket.emit('emote.send', { itemId: paid?.id });
+    expect((await rejected).code).toBe('BAD_REQUEST');
+
+    // 없는 id 도 거부
+    const bogus = once<ServerErrorView>(socket, 'server.error', 5000);
+    socket.emit('emote.send', { itemId: 'emote.없는것' });
+    expect((await bogus).code).toBe('BAD_REQUEST');
+
+    // 무료 기본 이모티콘 → 전원에게 표시
+    const free = catalog.find((i) => i.slot === 'emote' && i.price === 0);
+    expect(free).toBeDefined();
+    const shown = once<{ seat: number; itemId: string; nonce: number }>(socket, 'emote.show', 5000);
+    socket.emit('emote.send', { itemId: free?.id });
+    const e = await shown;
+    expect(e.seat).toBe(start.seat);
+    expect(e.itemId).toBe(free?.id);
+
+    // 쿨다운(3초) 안에 다시 보내면 조용히 무시된다 — 오류도, 브로드캐스트도 없다
+    let second = false;
+    socket.on('emote.show', () => {
+      second = true;
+    });
+    socket.emit('emote.send', { itemId: free?.id });
+    await new Promise((r) => setTimeout(r, 600));
+    expect(second).toBe(false);
+
+    // 산 뒤에는 보낼 수 있다
+    contextOf(app)
+      .db.prepare('INSERT INTO unlocks (user_id, item_id) VALUES (?, ?)')
+      .run(welcome.userId, paid?.id);
+    await new Promise((r) => setTimeout(r, 2600)); // 쿨다운 해제 대기
+    const afterBuy = once<{ itemId: string }>(socket, 'emote.show', 5000);
+    socket.emit('emote.send', { itemId: paid?.id });
+    expect((await afterBuy).itemId).toBe(paid?.id);
+  }, 40000);
+});

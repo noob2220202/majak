@@ -177,23 +177,24 @@ export function Shop() {
 
         <ArtCorners size={38} />
 
-        <div className="flex items-start justify-between px-5 pb-2 pt-6">
-          <div>
-            <ArtTitle className="w-[clamp(150px,20vw,220px)]">저잣거리</ArtTitle>
+        {/* 세로 화면에서는 제목·잔액·닫기가 한 줄에 안 들어가 잘렸다 — 줄여서 앉힌다 */}
+        <div className="flex items-start justify-between gap-2 px-3 pb-2 pt-6 sm:px-5">
+          <div className="min-w-0">
+            <ArtTitle className="w-[clamp(118px,20vw,220px)]">저잣거리</ArtTitle>
             <p className="mt-1 text-xs text-hanji/45">
               파는 것은 전부 치레거리입니다 — 승패에는 영향이 없습니다
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 rounded-full bg-ink/50 py-1.5 pl-2 pr-3 text-sm font-bold text-gold-hi ring-1 ring-gold/25">
-              <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-6" />
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <span className="flex items-center gap-1 rounded-full bg-ink/50 py-1.5 pl-2 pr-2.5 text-xs font-bold text-gold-hi ring-1 ring-gold/25 sm:gap-1.5 sm:pr-3 sm:text-sm">
+              <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-5 sm:size-6" />
               {(wallet?.balance ?? 0).toLocaleString()}냥
             </span>
             <ArtBack label="닫기" onClick={() => setShopOpen(false)} />
           </div>
         </div>
 
-        <div className="flex items-end gap-0.5 border-b border-hanji/10 px-5">
+        <div className="flex items-end gap-0.5 border-b border-hanji/10 px-3 sm:px-5">
           {SLOT_ORDER.map((s) => (
             <ArtTab key={s} active={slot === s} onClick={() => setSlot(s)}>
               {SLOT_LABEL[s]}
@@ -201,7 +202,7 @@ export function Shop() {
           ))}
         </div>
 
-        <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-5 sm:grid-cols-4">
+        <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-3 sm:grid-cols-4 sm:p-5">
           {items.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}

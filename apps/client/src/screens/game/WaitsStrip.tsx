@@ -30,7 +30,8 @@ export function WaitsStrip({ game, rules }: { game: LocalGame; rules: RuleSettin
   if (!info) return null;
 
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-ink/60 px-3 py-1.5 ring-1 ring-hanji/10">
+    // 국사무쌍은 대기가 13종이라 좁은 화면에서 넘친다 — 줄바꿈을 허용한다
+    <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg bg-ink/60 px-3 py-1.5 ring-1 ring-hanji/10">
       <span className="text-xs font-semibold text-dan-green">텐파이</span>
       {info.furiten && (
         <span className="rounded bg-dan-red/30 px-1.5 py-0.5 text-[10px] font-bold text-dan-red">

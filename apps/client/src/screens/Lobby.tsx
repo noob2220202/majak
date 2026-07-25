@@ -124,7 +124,9 @@ function RewardFloat() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: -18 }}
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-          className="tex-hanji absolute left-5 top-14 z-20 w-56 cursor-pointer rounded-xl bg-giwa/95 p-3 ring-1 ring-gold/35"
+          // 세로 화면에서는 띄울 빈자리가 없다 — 현판을 가리지 않게 흐름 안에 끼워 넣고,
+          // 넓은 화면에서만 좌상단에 띄운다
+          className="tex-hanji pointer-events-auto relative z-20 mb-3 w-full max-w-md cursor-pointer rounded-xl bg-giwa/95 p-3 ring-1 ring-gold/35 md:absolute md:left-5 md:top-14 md:mb-0 md:w-56"
           onClick={clearRewards}
         >
           <p className="text-xs font-semibold tracking-wider text-gold" style={{ fontFamily: 'var(--font-serif-kr)' }}>
@@ -273,12 +275,7 @@ export function Lobby() {
       >
         청기와
       </h1>
-      {userId && (
-        <>
-          <WalletBar />
-          <RewardFloat />
-        </>
-      )}
+      {userId && <WalletBar />}
 
       {/* 마작상 — 클릭하면 다음 사람으로 바뀐다. 판정에 영향 없는 순수 표시 요소 */}
       {userId && (
@@ -306,7 +303,9 @@ export function Lobby() {
         </button>
       )}
 
-      <main className="pointer-events-none relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-8 md:items-end md:pr-[6vw]">
+      {/* pt-16: 세로 화면에서 본문이 제목·잔액바 밑에서 시작하도록 자리를 비운다 */}
+      <main className="pointer-events-none relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 pb-8 pt-16 md:items-end md:py-8 md:pr-[6vw]">
+        {userId && <RewardFloat />}
         <div className="pointer-events-auto w-full md:w-auto">{userId ? <MainMenu /> : <AuthCard />}</div>
         <footer className="pointer-events-auto mt-6">
           <ConnectionBadge status={connection} />

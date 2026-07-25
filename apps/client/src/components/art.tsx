@@ -240,11 +240,13 @@ export function ArtIconButton({
   label,
   onClick,
   size = 42,
+  className = '',
 }: {
   icon: string;
   label: string;
   onClick: () => void;
   size?: number;
+  className?: string;
 }) {
   return (
     <button
@@ -252,7 +254,7 @@ export function ArtIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="group flex flex-col items-center gap-0.5 transition active:scale-95"
+      className={`group flex flex-col items-center gap-0.5 transition active:scale-95 ${className}`}
     >
       <img
         src={`/art/${icon}.webp`}

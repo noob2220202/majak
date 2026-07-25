@@ -45,7 +45,8 @@ export function SidePanel() {
     : YAKU_LIST;
 
   return (
-    <div className="flex h-full w-64 flex-col rounded-xl bg-giwa/80 ring-1 ring-hanji/10">
+    // 폭은 쓰는 쪽이 정한다 — 데스크톱은 우측 기둥, 좁은 화면은 서랍
+    <div className="flex h-full w-full flex-col rounded-xl bg-giwa/80 ring-1 ring-hanji/10">
       <div className="flex border-b border-hanji/10">
         {tabs.map(([t, label]) => (
           <button

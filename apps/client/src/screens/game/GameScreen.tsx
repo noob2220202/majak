@@ -3,6 +3,7 @@ import type { GameActionPayload } from '@cheongiwa/protocol';
 import type { TileId } from '@cheongiwa/engine';
 import { Button } from '../../components/ui';
 import { ArtIconButton } from '../../components/art';
+import { useElementSize } from '../../hooks/useElementSize';
 import { send } from '../../net/socket';
 import { useGame } from '../../store/game';
 import { unlockAudio } from '../../audio/sfx';
@@ -27,7 +28,10 @@ export function GameScreen() {
 
   const [riichiArm, setRiichiArm] = useState(false);
   const [reserveRatio, setReserveRatio] = useState<number | null>(null);
+  /** 좁은 화면에서는 사이드 패널을 서랍으로 연다 (설정·역 일람·기록에 닿을 길이 없었다) */
+  const [panelOpen, setPanelOpen] = useState(false);
   const deadlineRef = useRef<number | null>(null);
+  const { ref: rootRef, height: rootH } = useElementSize<HTMLDivElement>();
 
   const choices = game?.choices ?? null;
 
@@ -83,10 +87,14 @@ export function GameScreen() {
   };
 
   const myMelds = game.seats[game.mySeat]?.melds.length ?? 0;
+  // 폰을 눕히면 세로가 390px뿐이라, 패를 46px로 두면 손패가 마작상보다 커진다.
+  // 화면 높이에 비례해 상한을 낮춰 둘의 크기 균형을 맞춘다.
+  const tileCap = rootH === 0 ? 46 : Math.max(20, Math.min(46, Math.round(rootH * 0.075)));
 
   return (
     <div
-      className={`relative min-h-dvh px-3 py-3 ${simplified ? 'reduced-motion' : ''}`}
+      ref={rootRef}
+      className={`relative flex min-h-dvh flex-col overflow-x-clip px-2 py-3 sm:px-3 ${simplified ? 'reduced-motion' : ''}`}
       // 마작상 뒤 한옥 대청 — 중앙은 마작상에 가려지므로 좌우 기둥만 보인다.
       // 별도 레이어 대신 이 요소의 배경으로 깔아야 모든 자식 뒤에 확실히 들어간다.
       style={{
@@ -100,7 +108,7 @@ export function GameScreen() {
       }}
     >
       {/* 상단 바 */}
-      <div className="mx-auto mb-2 flex max-w-6xl items-center justify-between">
+      <div className="mx-auto mb-2 flex w-full max-w-6xl shrink-0 items-center justify-between">
         <div className="flex items-center gap-3">
           <ArtIconButton icon="icon-game-sync" label="동기화" size={34} onClick={() => send.syncRequest()} />
           {connection !== 'connected' && (
@@ -110,23 +118,38 @@ export function GameScreen() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-hanji/40">시드 {game.seedHash.slice(0, 10)}…</span>
+          <span className="hidden text-xs text-hanji/40 sm:inline">
+            시드 {game.seedHash.slice(0, 10)}…
+          </span>
           <EmoteBar />
+          {/* 사이드 패널이 접히는 폭에서만 나오는 서랍 손잡이 */}
+          <ArtIconButton
+            icon="icon-game-settings"
+            label="설정"
+            size={34}
+            className="lg:hidden"
+            onClick={() => setPanelOpen(true)}
+          />
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-6xl gap-3">
-        {/* 좌: 보드 + 손패 */}
-        <div className="flex-1">
-          <Board game={game} reserveRatio={reserveRatio} />
+      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-3">
+        {/* 좌: 보드 + 손패. min-w-0 이 없으면 flex 항목이 내용 폭 아래로 안 줄어 화면을 민다 */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* 마작상은 남는 자리를 통째로 받아 그 안에서 정사각으로 앉는다.
+              min-h-0 이 있어야 flex 항목이 내용보다 작아질 수 있다 */}
+          <div className="min-h-0 flex-1">
+            <Board game={game} reserveRatio={reserveRatio} />
+          </div>
 
           {/* 대기패 표시 */}
-          <div className="mt-3 flex min-h-9 justify-center">
+          <div className="mt-2 flex min-h-9 shrink-0 justify-center">
             <WaitsStrip game={game} rules={game.rules} />
           </div>
 
-          {/* 내 손패 + 콜 버튼 */}
-          <div className="mt-2 flex items-end justify-between gap-4">
+          {/* 내 손패 + 콜 버튼 — 좁으면 콜 버튼을 손패 위로 올린다.
+              손패는 늘 화면 아래(엄지 닿는 자리)에 둔다 */}
+          <div className="flex shrink-0 flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <MyHand
               hand={game.myHand}
               drawn={game.myDrawn}
@@ -134,9 +157,10 @@ export function GameScreen() {
               choices={choices}
               hints={hints}
               riichiArm={riichiArm}
+              maxWidth={tileCap}
               onDiscard={onDiscard}
             />
-            <div className="min-h-[64px] shrink-0">
+            <div className="flex min-h-[52px] shrink-0 justify-center sm:min-h-[64px] sm:justify-end">
               {choices && (
                 <CallBar
                   choices={choices}
@@ -151,10 +175,35 @@ export function GameScreen() {
         </div>
 
         {/* 우: 사이드 패널 */}
-        <div className="hidden lg:block">
+        <div className="hidden w-64 shrink-0 lg:block">
           <SidePanel />
         </div>
       </div>
+
+      {/* 좁은 화면용 사이드 패널 서랍 */}
+      {panelOpen && (
+        <div className="fixed inset-0 z-40 flex lg:hidden" role="dialog" aria-label="설정">
+          <button
+            type="button"
+            aria-label="닫기"
+            className="absolute inset-0 bg-ink/70"
+            onClick={() => setPanelOpen(false)}
+          />
+          {/* 배경이 비치면 글씨가 안 읽혀서 서랍 바닥은 불투명하게 깐다 */}
+          <div className="relative ml-auto flex h-dvh w-[min(16rem,86vw)] flex-col bg-giwa">
+            <button
+              type="button"
+              onClick={() => setPanelOpen(false)}
+              className="shrink-0 bg-giwa/90 py-2 text-sm font-semibold text-hanji"
+            >
+              닫기
+            </button>
+            <div className="min-h-0 flex-1">
+              <SidePanel />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 선언 연출 (리치·울기·화료·유국) */}
       <Announce items={announces} simplified={simplified} />

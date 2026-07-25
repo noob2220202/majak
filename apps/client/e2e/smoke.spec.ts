@@ -30,7 +30,7 @@ test('친선방 → 봇 3 → 동풍전 완주 → 최종 결과', async ({ page
   await page.getByRole('button', { name: /대국 시작/ }).click();
 
   // 대국 화면 진입 (보드)
-  await expect(page.locator('.aspect-square').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[data-board]').first()).toBeVisible({ timeout: 15_000 });
 
   // 자동 편의 전부 켜기 → 무인 진행
   for (const label of ['자동 화료', '울기 스킵', '자동 쯔모기리']) {

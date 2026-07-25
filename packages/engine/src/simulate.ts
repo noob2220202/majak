@@ -139,12 +139,14 @@ export interface SimulationOptions {
   readonly rules?: RuleSettings;
   /** 국 단위 불변식 검사 (성능 비용 있음) */
   readonly checkInvariants?: boolean;
+  /** 좌석별 봇을 직접 지정 (봇 대결용). 생략하면 전원 v1 */
+  readonly makeBots?: () => Bot[];
 }
 
 export function runSimulation(options: SimulationOptions): SimulationStats {
   const stats = emptyStats();
   const rules = options.rules ?? DEFAULT_RULES;
-  const bots: Bot[] = SEATS.map(() => createBotV1());
+  const bots: Bot[] = options.makeBots ? options.makeBots() : SEATS.map(() => createBotV1());
 
   for (let g = 0; g < options.games; g++) {
     const game = startGame({ rules, seed: `${options.seedPrefix ?? 'sim'}-${g}` });

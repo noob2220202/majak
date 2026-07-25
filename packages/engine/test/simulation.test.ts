@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatStats, gameFingerprint, runSimulation } from '../src';
+import { createBotV2, formatStats, gameFingerprint, runSimulation, SEATS } from '../src';
 
 describe('봇 자동 대국 시뮬레이션 (§8.1 불변식)', () => {
   it('30반장: 크래시 0, 점수 합 100,000 보존, 패 총량 136 보존', () => {
@@ -45,4 +45,34 @@ describe.runIf(manualGames > 0)('수동 대규모 시뮬레이션', () => {
     console.log(formatStats(stats));
     expect(stats.games).toBe(manualGames);
   }, 0);
+});
+
+describe('봇 v2 (§3.5 고급 AI)', () => {
+  it('30반장을 v2 4인으로 돌려도 불변식이 유지된다', () => {
+    const stats = runSimulation({
+      games: 30,
+      seedPrefix: 'v2',
+      checkInvariants: true,
+      makeBots: () => SEATS.map(() => createBotV2()),
+    });
+    expect(stats.games).toBe(30);
+    expect(stats.rounds).toBeGreaterThan(30 * 6);
+    // 화료가 아예 없거나 전부 유국이면 봇이 망가진 것이다
+    expect(stats.wins).toBeGreaterThan(stats.rounds * 0.3);
+  }, 120000);
+
+  it('v2도 결정론이다 — 같은 시드 → 같은 결과', () => {
+    const run = () =>
+      runSimulation({
+        games: 3,
+        seedPrefix: 'v2-det',
+        checkInvariants: false,
+        makeBots: () => SEATS.map(() => createBotV2()),
+      });
+    const a = run();
+    const b = run();
+    expect(b.wins).toBe(a.wins);
+    expect(b.rounds).toBe(a.rounds);
+    expect(b.riichiDeclared).toBe(a.riichiDeclared);
+  }, 60000);
 });

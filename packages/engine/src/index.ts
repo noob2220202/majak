@@ -143,6 +143,7 @@ export { startGame, advanceGame, dealerOf, roundWindOf } from './game';
 
 export type { Bot } from './bot';
 export { createBotV1 } from './bot';
+export { createBotV2 } from './botV2';
 
 export type { SimulationStats, SimulationOptions } from './simulate';
 export { runSimulation, gameFingerprint, formatStats, emptyStats } from './simulate';

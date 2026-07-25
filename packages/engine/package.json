@@ -14,7 +14,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "sim": "tsx scripts/simulate.ts"
+    "sim": "tsx scripts/simulate.ts",
+    "duel": "tsx scripts/bot-duel.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

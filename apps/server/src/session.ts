@@ -3,7 +3,7 @@ import type { Server as SocketIOServer, Socket } from 'socket.io';
 import {
   advanceGame,
   applyAction,
-  createBotV1,
+  createBotV2,
   reactionOffers,
   startGame,
   turnChoices,
@@ -29,6 +29,7 @@ import { buildChoices, buildRoundResult, buildRoundStart, buildSeatViews, redact
  * 대국 세션 (PLAN.md §3.3~§3.5).
  * 서버 권위: 엔진은 여기서만 구동되고, 클라에는 개인 시점 뷰만 나간다.
  * 타이머(행동 5초 + 국당 예비 20초), 이탈 시 안전봇 대체, 5분 내 재접속 복귀.
+ * 봇 좌석은 v2(패 효율 + 방총 위험 평가)를 쓰고, 이탈자 대타는 안전 타패만 한다.
  */
 
 export interface SessionSeatInit {
@@ -143,7 +144,7 @@ export class GameSession {
       timer: null,
       lastEmoteAt: 0,
     }));
-    this.smartBots = this.seats.map(() => createBotV1());
+    this.smartBots = this.seats.map(() => createBotV2());
     this.game = startGame({ rules, seed: this.seed });
   }
 

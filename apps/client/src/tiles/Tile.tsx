@@ -63,17 +63,49 @@ export const Tile = memo(function Tile({
   };
 
   if (faceDown) {
+    // 패 뒷면: 쪽빛 바탕 + 금박 수막새 (게임의 아이콘, §4.4).
+    // 작게 그릴 때는 문양이 뭉치므로 단순한 고리만 남긴다 (LOD).
+    const detailed = width >= 26;
+    const petals = [0, 1, 2, 3, 4, 5].map((i) => (i * Math.PI) / 3);
     return (
       <div
         style={{
           ...base,
-          background: 'linear-gradient(160deg, #2d4b86 0%, #243b6b 55%, #1c2f57 100%)',
+          background: 'linear-gradient(160deg, #33528f 0%, #243b6b 52%, #1a2b50 100%)',
         }}
         aria-label={ariaLabel ?? '패 뒷면'}
       >
         <svg viewBox="0 0 100 134" width={width} height={height} style={{ display: 'block' }}>
-          <circle cx={50} cy={67} r={26} fill="none" stroke="#c8a24b" strokeWidth={3.5} />
-          <circle cx={50} cy={67} r={8} fill="#c8a24b" />
+          {detailed && (
+            <rect x={6} y={7} width={88} height={120} rx={9} fill="none" stroke="#c8a24b" strokeOpacity={0.25} strokeWidth={2} />
+          )}
+          <circle
+            cx={50}
+            cy={67}
+            r={detailed ? 30 : 26}
+            fill="none"
+            stroke="#c8a24b"
+            strokeOpacity={detailed ? 0.95 : 0.75}
+            strokeWidth={detailed ? 3 : 5}
+          />
+          {detailed && (
+            <>
+              <circle cx={50} cy={67} r={22} fill="none" stroke="#c8a24b" strokeOpacity={0.45} strokeWidth={1.2} />
+              {petals.map((a, i) => (
+                <ellipse
+                  key={i}
+                  cx={50 + Math.cos(a) * 14}
+                  cy={67 + Math.sin(a) * 14}
+                  rx={7}
+                  ry={4.2}
+                  fill="#c8a24b"
+                  opacity={0.8}
+                  transform={`rotate(${(a * 180) / Math.PI} ${50 + Math.cos(a) * 14} ${67 + Math.sin(a) * 14})`}
+                />
+              ))}
+            </>
+          )}
+          <circle cx={50} cy={67} r={detailed ? 6 : 8} fill="#e6c87a" />
         </svg>
       </div>
     );

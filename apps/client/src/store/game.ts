@@ -22,6 +22,8 @@ import type {
 } from '@cheongiwa/protocol';
 import { getSocket } from '../net/socket';
 import { describeEvent } from './eventText';
+import { playSfx, setMuted, setVolume } from '../audio/sfx';
+import type { AnnounceItem } from '../effects/Announce';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 export type Screen = 'auth' | 'lobby' | 'room' | 'game';
@@ -88,11 +90,45 @@ interface GameStore {
   // 설정
   auto: { autoWin: boolean; autoSkipCalls: boolean; autoTsumogiri: boolean };
   hints: boolean;
+  /** 연출 간소화 (§4.5) */
+  simplified: boolean;
+  sound: { muted: boolean; volume: number };
+
+  /** 화면 중앙 선언 연출 큐 */
+  announces: AnnounceItem[];
 
   setAuto(next: Partial<GameStore['auto']>): void;
   toggleHints(): void;
+  toggleSimplified(): void;
+  setSound(next: Partial<GameStore['sound']>): void;
   dismissError(): void;
   clearGameEnd(): void;
+}
+
+const PREFS_KEY = 'cheongiwa.prefs';
+
+interface StoredPrefs {
+  hints?: boolean;
+  simplified?: boolean;
+  muted?: boolean;
+  volume?: number;
+}
+
+function loadPrefs(): StoredPrefs {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as StoredPrefs;
+  } catch {
+    return {};
+  }
+}
+
+function savePrefs(p: StoredPrefs): void {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(p));
+  } catch {
+    // 저장 실패는 무시 (프라이빗 모드 등)
+  }
 }
 
 const emptyAuto = { autoWin: false, autoSkipCalls: false, autoTsumogiri: false };
@@ -114,6 +150,10 @@ const seatsFromRound = (
     hasDrawn: false,
   }));
 
+const prefs = loadPrefs();
+setMuted(prefs.muted ?? false);
+setVolume(prefs.volume ?? 0.6);
+
 export const useGame = create<GameStore>((set, get) => ({
   connection: 'connecting',
   serverProtocol: null,
@@ -128,7 +168,10 @@ export const useGame = create<GameStore>((set, get) => ({
   game: null,
   gameEnd: null,
   auto: { ...emptyAuto },
-  hints: true,
+  hints: prefs.hints ?? true,
+  simplified: prefs.simplified ?? false,
+  sound: { muted: prefs.muted ?? false, volume: prefs.volume ?? 0.6 },
+  announces: [],
 
   setAuto(next) {
     const auto = { ...get().auto, ...next };
@@ -136,15 +179,50 @@ export const useGame = create<GameStore>((set, get) => ({
     getSocket().emit('settings.auto', auto);
   },
   toggleHints() {
-    set({ hints: !get().hints });
+    const hints = !get().hints;
+    set({ hints });
+    savePrefs({ ...loadPrefs(), hints });
+  },
+  toggleSimplified() {
+    const simplified = !get().simplified;
+    set({ simplified });
+    savePrefs({ ...loadPrefs(), simplified });
+  },
+  setSound(next) {
+    const sound = { ...get().sound, ...next };
+    set({ sound });
+    setMuted(sound.muted);
+    setVolume(sound.volume);
+    savePrefs({ ...loadPrefs(), muted: sound.muted, volume: sound.volume });
   },
   dismissError() {
     set({ error: null });
   },
   clearGameEnd() {
-    set({ gameEnd: null, game: null, screen: 'lobby', auto: { ...emptyAuto } });
+    set({ gameEnd: null, game: null, screen: 'lobby', auto: { ...emptyAuto }, announces: [] });
   },
 }));
+
+// ── 선언 연출 큐 ────────────────────────────────────────────────
+let announceSeq = 0;
+
+/** 화면 중앙에 큰 글자를 띄운다 (자동 소멸) */
+function pushAnnounce(kind: AnnounceItem['kind'], text: string, from: AnnounceItem['from']): void {
+  const id = ++announceSeq;
+  useGame.setState((s) => ({ announces: [...s.announces, { id, kind, text, from }] }));
+  const ttl = useGame.getState().simplified ? 380 : 1100;
+  setTimeout(() => {
+    useGame.setState((s) => ({ announces: s.announces.filter((a) => a.id !== id) }));
+  }, ttl);
+}
+
+const MELD_ANNOUNCE: Record<string, string> = {
+  chi: '치',
+  pon: '퐁',
+  daiminkan: '깡',
+  shouminkan: '깡',
+  ankan: '깡',
+};
 
 // ── 이벤트 리듀서 헬퍼 ──────────────────────────────────────────────
 
@@ -420,6 +498,32 @@ export function initNetworking(): void {
     const game = get().game;
     if (!game) return;
     set({ game: applyPublicEvent(game, event) });
+
+    // 효과음·선언 연출 (§4.5·§4.6)
+    const rel = (seat: Seat): AnnounceItem['from'] => {
+      const d = (seat - game.mySeat + 4) % 4;
+      return (['self', 'right', 'top', 'left'] as const)[d] as AnnounceItem['from'];
+    };
+    switch (event.type) {
+      case 'draw':
+        if (event.seat === game.mySeat) playSfx('draw');
+        break;
+      case 'discard':
+        playSfx('discard');
+        if (event.riichi) {
+          playSfx('riichi');
+          pushAnnounce('riichi', '리치', rel(event.seat));
+        }
+        break;
+      case 'call': {
+        playSfx('call');
+        const label = MELD_ANNOUNCE[event.meld.type];
+        if (label) pushAnnounce('call', label, rel(event.seat));
+        break;
+      }
+      default:
+        break;
+    }
   });
 
   socket.on('game.choices', (choices: ChoicesView) => {
@@ -439,6 +543,21 @@ export function initNetworking(): void {
   socket.on('game.roundResult', (result: RoundResultView) => {
     const game = get().game;
     if (!game) return;
+
+    // 화료 선언 연출 + 효과음
+    if (result.type === 'win') {
+      const first = result.wins[0];
+      if (first) {
+        const d = (first.seat - game.mySeat + 4) % 4;
+        const from = (['self', 'right', 'top', 'left'] as const)[d] as AnnounceItem['from'];
+        pushAnnounce(first.from === null ? 'tsumo' : 'ron', first.from === null ? '쯔모' : '론', from);
+      }
+      playSfx(result.wins.some((w) => w.yakuman.length > 0) ? 'yakuman' : 'win');
+    } else {
+      pushAnnounce('ryuukyoku', '유국', 'self');
+      playSfx('draw_end');
+    }
+
     // 점수 반영
     const seats = game.seats.map((s) => ({ ...s, score: result.scores[s.seat] ?? s.score }));
     set({

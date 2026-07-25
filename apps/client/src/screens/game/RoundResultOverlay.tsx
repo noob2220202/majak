@@ -4,6 +4,9 @@ import type { RoundResultView, WinResultView } from '@cheongiwa/protocol';
 import type { LocalGame } from '../../store/game';
 import { Tile } from '../../tiles/Tile';
 import { MeldRow } from './MeldRow';
+import { Byeongpung } from '../../effects/Byeongpung';
+import { CountUp } from '../../effects/CountUp';
+import { DancheongBorder } from '../../motifs/Motifs';
 
 const ABORTIVE_LABEL: Record<AbortiveReason, string> = {
   kyuushu: '구종구패',
@@ -17,7 +20,15 @@ function seatName(game: LocalGame, seat: number): string {
   return game.players.find((p) => p.seat === seat)?.nickname ?? `${seat}번`;
 }
 
-function WinCard({ win, game }: { win: WinResultView; game: LocalGame }) {
+function WinCard({
+  win,
+  game,
+  simplified,
+}: {
+  win: WinResultView;
+  game: LocalGame;
+  simplified: boolean;
+}) {
   const isYakuman = win.yakuman.length > 0;
   return (
     <div className="rounded-xl bg-ink/60 p-3 ring-1 ring-hanji/10">
@@ -61,10 +72,10 @@ function WinCard({ win, game }: { win: WinResultView; game: LocalGame }) {
           : win.yaku.map((y, i) => (
               <motion.span
                 key={y.id + i}
-                initial={{ scale: 1.3, opacity: 0 }}
+                initial={simplified ? false : { scale: 1.35, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: i * 0.05, duration: 0.15 }}
-                className="rounded bg-hanji/10 px-2 py-0.5 text-xs text-hanji"
+                transition={{ delay: simplified ? 0 : i * 0.07, duration: simplified ? 0 : 0.18, ease: [0.3, 1.4, 0.5, 1] }}
+                className="rounded border border-hanji/15 bg-hanji/10 px-2 py-0.5 text-xs text-hanji"
               >
                 {y.name} <span className="text-gold-hi">{y.han}판</span>
               </motion.span>
@@ -74,48 +85,85 @@ function WinCard({ win, game }: { win: WinResultView; game: LocalGame }) {
       <div className="mt-2 flex items-baseline gap-2">
         {!isYakuman && <span className="text-sm text-hanji/60">{win.fu}부 {win.han}판</span>}
         {win.limit && <span className="text-sm font-bold text-gold-hi">{win.limit}</span>}
-        <span className="ml-auto text-lg font-black text-gold-hi">+{win.gained}</span>
+        <CountUp
+          to={win.gained}
+          prefix="+"
+          simplified={simplified}
+          className="ml-auto text-xl font-black text-gold-hi"
+        />
       </div>
     </div>
   );
 }
 
+/** 만관 이상이면 병풍, 역만이면 금박 파티클 (§4.5) */
+const LIMIT_RANK: Record<string, number> = {
+  만관: 1,
+  하네만: 2,
+  배만: 3,
+  삼배만: 4,
+  역만: 5,
+};
+
 export function RoundResultOverlay({
   result,
   game,
+  simplified = false,
   onContinue,
 }: {
   result: RoundResultView;
   game: LocalGame;
+  simplified?: boolean;
   onContinue: () => void;
 }) {
+  const big =
+    result.type === 'win'
+      ? result.wins.reduce((max, w) => Math.max(max, LIMIT_RANK[w.limit ?? ''] ?? 0), 0)
+      : 0;
+  const isYakuman = result.type === 'win' && result.wins.some((w) => w.yakuman.length > 0);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="absolute inset-0 z-30 grid place-items-center bg-ink/70 p-4 backdrop-blur-sm"
+      transition={{ duration: simplified ? 0.05 : 0.25 }}
+      className="absolute inset-0 z-30 grid place-items-center overflow-hidden bg-ink/88 p-4"
       onClick={onContinue}
     >
+      {/* 만관 이상: 병풍이 펼쳐짐 / 역만: 금박 파티클 */}
+      {big >= 1 && <Byeongpung gold={isYakuman || big >= 5} simplified={simplified} />}
+
       <motion.div
-        initial={{ scale: 0.94, y: 10 }}
+        initial={{ scale: simplified ? 1 : 0.94, y: simplified ? 0 : 10 }}
         animate={{ scale: 1, y: 0 }}
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-giwa p-4 ring-1 ring-hanji/15"
+        transition={{ duration: simplified ? 0.05 : 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+        className="tex-hanji relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-giwa p-4 ring-1 ring-gold/25"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl">
+          <DancheongBorder height={5} />
+        </div>
+
         {result.type === 'win' && (
-          <div className="flex flex-col gap-3">
-            <h2 className="text-center text-2xl font-black text-hanji" style={{ fontFamily: 'var(--font-serif-kr)' }}>
+          <div className="flex flex-col gap-3 pt-2">
+            <h2
+              className={`text-center text-3xl font-black tracking-widest text-hanji ${simplified ? '' : 'anim-brush'}`}
+              style={{ fontFamily: 'var(--font-serif-kr)' }}
+            >
               화료
             </h2>
             {result.wins.map((w) => (
-              <WinCard key={w.seat} win={w} game={game} />
+              <WinCard key={w.seat} win={w} game={game} simplified={simplified} />
             ))}
           </div>
         )}
 
         {result.type === 'exhaustive' && (
           <div>
-            <h2 className="mb-3 text-center text-2xl font-black text-hanji" style={{ fontFamily: 'var(--font-serif-kr)' }}>
+            <h2
+              className={`mb-3 pt-2 text-center text-3xl font-black tracking-widest text-hanji/85 ${simplified ? '' : 'anim-brush'}`}
+              style={{ fontFamily: 'var(--font-serif-kr)' }}
+            >
               황패유국
             </h2>
             <p className="text-center text-sm text-hanji/70">
@@ -146,7 +194,10 @@ export function RoundResultOverlay({
 
         {result.type === 'abortive' && (
           <div>
-            <h2 className="text-center text-2xl font-black text-hanji" style={{ fontFamily: 'var(--font-serif-kr)' }}>
+            <h2
+              className={`pt-2 text-center text-3xl font-black tracking-widest text-hanji/85 ${simplified ? '' : 'anim-brush'}`}
+              style={{ fontFamily: 'var(--font-serif-kr)' }}
+            >
               도중유국
             </h2>
             <p className="mt-2 text-center text-sm text-hanji/70">{ABORTIVE_LABEL[result.reason]}</p>
@@ -157,7 +208,11 @@ export function RoundResultOverlay({
           {result.scores.map((score, seat) => (
             <div key={seat}>
               <p className="truncate text-[11px] text-hanji/55">{seatName(game, seat)}</p>
-              <p className="text-sm font-bold tabular-nums text-hanji">{score.toLocaleString()}</p>
+              <CountUp
+                to={score}
+                simplified={simplified}
+                className="block text-sm font-bold text-hanji"
+              />
               <p
                 className={`text-xs tabular-nums ${
                   (result.deltas[seat] ?? 0) > 0

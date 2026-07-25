@@ -31,7 +31,8 @@ function AutoToggleRow({
 export function SidePanel() {
   const [tab, setTab] = useState<Tab>('settings');
   const [query, setQuery] = useState('');
-  const { auto, setAuto, hints, toggleHints, game } = useGame();
+  const { auto, setAuto, hints, toggleHints, simplified, toggleSimplified, sound, setSound, game } =
+    useGame();
 
   const tabs: Array<[Tab, string]> = [
     ['settings', '설정'],
@@ -66,11 +67,31 @@ export function SidePanel() {
             <AutoToggleRow label="자동 화료" value={auto.autoWin} onChange={(v) => setAuto({ autoWin: v })} />
             <AutoToggleRow label="울기 스킵" value={auto.autoSkipCalls} onChange={(v) => setAuto({ autoSkipCalls: v })} />
             <AutoToggleRow label="자동 쯔모기리" value={auto.autoTsumogiri} onChange={(v) => setAuto({ autoTsumogiri: v })} />
-            <p className="mt-3 text-xs text-hanji/50">표시</p>
+            <p className="mt-3 text-xs text-hanji/50">표시·연출</p>
             <AutoToggleRow label="유효패 힌트" value={hints} onChange={() => toggleHints()} />
-            <p className="mt-2 text-[11px] leading-relaxed text-hanji/40">
+            <AutoToggleRow label="연출 간소화" value={simplified} onChange={() => toggleSimplified()} />
+            <p className="mt-1 text-[11px] leading-relaxed text-hanji/40">
               힌트는 버리면 텐파이가 되는 패를 금색으로 표시합니다. 경기 감각을 원하면 끄세요.
             </p>
+
+            <p className="mt-3 text-xs text-hanji/50">소리</p>
+            <AutoToggleRow
+              label="음소거"
+              value={sound.muted}
+              onChange={(v) => setSound({ muted: v })}
+            />
+            <label className="flex items-center gap-2 rounded-lg bg-hanji/5 px-3 py-2 text-sm text-hanji/85">
+              <span className="shrink-0">볼륨</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(sound.volume * 100)}
+                onChange={(e) => setSound({ volume: Number(e.target.value) / 100 })}
+                className="w-full accent-[var(--gold)]"
+                aria-label="볼륨"
+              />
+            </label>
           </div>
         )}
 

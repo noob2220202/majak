@@ -4,6 +4,8 @@ import type { TileId } from '@cheongiwa/engine';
 import { Button } from '../../components/ui';
 import { send } from '../../net/socket';
 import { useGame } from '../../store/game';
+import { unlockAudio } from '../../audio/sfx';
+import { Announce } from '../../effects/Announce';
 import { Board } from './Board';
 import { CallBar } from './CallBar';
 import { GameEndOverlay } from './GameEndOverlay';
@@ -17,6 +19,8 @@ export function GameScreen() {
   const gameEnd = useGame((s) => s.gameEnd);
   const connection = useGame((s) => s.connection);
   const hints = useGame((s) => s.hints);
+  const simplified = useGame((s) => s.simplified);
+  const announces = useGame((s) => s.announces);
   const clearGameEnd = useGame((s) => s.clearGameEnd);
 
   const [riichiArm, setRiichiArm] = useState(false);
@@ -58,6 +62,7 @@ export function GameScreen() {
   }
 
   const act = (action: GameActionPayload): void => {
+    unlockAudio(); // 사용자 제스처에서 오디오 컨텍스트 활성화
     send.gameAction(action);
     setRiichiArm(false);
     // 낙관적으로 선택지 제거 (중복 전송 방지)
@@ -71,7 +76,11 @@ export function GameScreen() {
   const myMelds = game.seats[game.mySeat]?.melds.length ?? 0;
 
   return (
-    <div className="relative min-h-dvh bg-gradient-to-b from-[#183b32] to-[#0f261f] px-3 py-3">
+    <div
+      className={`relative min-h-dvh bg-gradient-to-b from-[#183b32] to-[#0f261f] px-3 py-3 ${
+        simplified ? 'reduced-motion' : ''
+      }`}
+    >
       {/* 상단 바 */}
       <div className="mx-auto mb-2 flex max-w-6xl items-center justify-between">
         <div className="flex items-center gap-2">
@@ -113,6 +122,7 @@ export function GameScreen() {
                 <CallBar
                   choices={choices}
                   riichiArm={riichiArm}
+                  simplified={simplified}
                   onRiichiArm={setRiichiArm}
                   onAction={act}
                 />
@@ -127,11 +137,15 @@ export function GameScreen() {
         </div>
       </div>
 
+      {/* 선언 연출 (리치·울기·화료·유국) */}
+      <Announce items={announces} simplified={simplified} />
+
       {/* 국 결과 오버레이 */}
       {game.roundResult && !gameEnd && (
         <RoundResultOverlay
           result={game.roundResult}
           game={game}
+          simplified={simplified}
           onContinue={() => {
             useGame.setState((s) => (s.game ? { game: { ...s.game, roundResult: null } } : {}));
           }}

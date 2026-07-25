@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { EavesSilhouette } from '../lobby/EavesSilhouette';
 import { Button, ConnectionBadge, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
+import { unlockAudio } from '../audio/sfx';
+import { NightSky } from './NightSky';
+import { Sumaksae, Yeopjeon } from '../motifs/Motifs';
 
 function AuthCard() {
   const [nickname, setNickname] = useState(
@@ -13,6 +15,7 @@ function AuthCard() {
   const submit = (): void => {
     const nick = nickname.trim();
     if (nick.length === 0) return;
+    unlockAudio(); // 사용자 제스처에서 오디오 활성화 (§4.6)
     send.authHello({ nickname: nick });
   };
   return (
@@ -20,8 +23,11 @@ function AuthCard() {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-      className="w-full max-w-sm rounded-xl bg-hanji p-8 text-ink shadow-2xl"
+      className="tex-hanji relative w-full max-w-sm rounded-xl bg-hanji p-8 text-ink shadow-2xl ring-1 ring-gold/30"
     >
+      <div className="mb-2 flex justify-center">
+        <Sumaksae size={46} color="var(--giwa)" opacity={0.85} />
+      </div>
       <h2
         className="text-center text-4xl font-black tracking-widest"
         style={{ fontFamily: 'var(--font-serif-kr)' }}
@@ -95,8 +101,11 @@ function MainMenu() {
       transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
       className="w-full max-w-sm"
     >
-      <div className="mb-4 flex items-center justify-between rounded-lg bg-hanji/10 px-4 py-2.5">
-        <span className="font-semibold text-hanji">{nickname}</span>
+      <div className="mb-4 flex items-center justify-between rounded-lg bg-hanji/10 px-4 py-2.5 ring-1 ring-gold/20">
+        <span className="flex items-center gap-2 font-semibold text-hanji">
+          <Yeopjeon size={15} />
+          {nickname}
+        </span>
         {stats && (
           <span className="text-xs text-hanji/60 tabular-nums">
             {stats.games}국 · 1위 {stats.top1}
@@ -151,28 +160,24 @@ function MainMenu() {
 }
 
 export function Lobby() {
-  const { connection, userId } = useGame();
-  useEffect(() => {
-    // 연결되면 저장된 토큰으로 자동 인증은 store가 처리
-  }, []);
+  const connection = useGame((s) => s.connection);
+  const userId = useGame((s) => s.userId);
+  const simplified = useGame((s) => s.simplified);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-giwa to-night">
-      <header className="relative">
-        <EavesSilhouette />
-        <h1
-          className="pointer-events-none absolute inset-x-0 top-3 text-center text-lg font-bold tracking-[0.5em] text-hanji/80"
-          style={{ fontFamily: 'var(--font-serif-kr)' }}
-        >
-          청기와
-        </h1>
-      </header>
-      <main className="flex flex-1 items-center justify-center px-4 py-8">
+    <NightSky simplified={simplified}>
+      <h1
+        className="pointer-events-none absolute inset-x-0 -top-24 text-center text-xl font-bold tracking-[0.5em] text-hanji/85"
+        style={{ fontFamily: 'var(--font-serif-kr)' }}
+      >
+        청기와
+      </h1>
+      <main className="flex min-h-[calc(100dvh-104px)] flex-col items-center justify-center px-4 py-8">
         {userId ? <MainMenu /> : <AuthCard />}
+        <footer className="mt-8">
+          <ConnectionBadge status={connection} />
+        </footer>
       </main>
-      <footer className="flex justify-center pb-6">
-        <ConnectionBadge status={connection} />
-      </footer>
-    </div>
+    </NightSky>
   );
 }

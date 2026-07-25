@@ -9,29 +9,40 @@ import { tileLabel } from '../../store/eventText';
 export function CallBar({
   choices,
   riichiArm,
+  simplified = false,
   onRiichiArm,
   onAction,
 }: {
   choices: ChoicesView;
   riichiArm: boolean;
+  simplified?: boolean;
   onRiichiArm: (v: boolean) => void;
   onAction: (action: GameActionPayload) => void;
 }) {
   const [chiPick, setChiPick] = useState(false);
   const [kanPick, setKanPick] = useState(false);
+  // 도장이 순차로 "쾅쾅" 찍히도록 지연을 준다
+  let stampIndex = 0;
+  const nextDelay = (): number => stampIndex++ * 55;
 
   if (choices.kind === 'reaction') {
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {choices.canRon && <SealButton label="론" onClick={() => onAction({ type: 'ron' })} />}
-        {choices.canPon && <SealButton label="퐁" onClick={() => onAction({ type: 'pon' })} />}
+        {choices.canRon && (
+          <SealButton label="론" delay={nextDelay()} simplified={simplified} onClick={() => onAction({ type: 'ron' })} />
+        )}
+        {choices.canPon && (
+          <SealButton label="퐁" delay={nextDelay()} simplified={simplified} onClick={() => onAction({ type: 'pon' })} />
+        )}
         {choices.canDaiminkan && (
-          <SealButton label="깡" onClick={() => onAction({ type: 'daiminkan' })} />
+          <SealButton label="깡" delay={nextDelay()} simplified={simplified} onClick={() => onAction({ type: 'daiminkan' })} />
         )}
         {choices.chiCombos.length > 0 &&
           (choices.chiCombos.length === 1 ? (
             <SealButton
               label="치"
+              delay={nextDelay()}
+              simplified={simplified}
               onClick={() => onAction({ type: 'chi', tiles: choices.chiCombos[0] as [TileId, TileId] })}
             />
           ) : chiPick ? (
@@ -49,9 +60,9 @@ export function CallBar({
               ))}
             </div>
           ) : (
-            <SealButton label="치" onClick={() => setChiPick(true)} />
+            <SealButton label="치" delay={nextDelay()} simplified={simplified} onClick={() => setChiPick(true)} />
           ))}
-        <SealButton label="패스" variant="pass" onClick={() => onAction({ type: 'pass' })} />
+        <SealButton label="패스" variant="pass" delay={nextDelay()} simplified={simplified} onClick={() => onAction({ type: 'pass' })} />
       </div>
     );
   }
@@ -59,17 +70,19 @@ export function CallBar({
   // turn
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {choices.canTsumo && <SealButton label="쯔모" onClick={() => onAction({ type: 'tsumo' })} />}
+      {choices.canTsumo && <SealButton label="쯔모" delay={nextDelay()} simplified={simplified} onClick={() => onAction({ type: 'tsumo' })} />}
       {choices.riichiDiscards.length > 0 &&
         (riichiArm ? (
-          <SealButton label="취소" variant="pass" onClick={() => onRiichiArm(false)} />
+          <SealButton label="취소" variant="pass" delay={nextDelay()} simplified={simplified} onClick={() => onRiichiArm(false)} />
         ) : (
-          <SealButton label="리치" onClick={() => onRiichiArm(true)} />
+          <SealButton label="리치" delay={nextDelay()} simplified={simplified} onClick={() => onRiichiArm(true)} />
         ))}
       {choices.ankanKinds.length > 0 &&
         (choices.ankanKinds.length === 1 ? (
           <SealButton
             label="안깡"
+            delay={nextDelay()}
+            simplified={simplified}
             onClick={() => onAction({ type: 'ankan', kind: choices.ankanKinds[0] as number })}
           />
         ) : kanPick ? (
@@ -86,18 +99,20 @@ export function CallBar({
             ))}
           </div>
         ) : (
-          <SealButton label="안깡" onClick={() => setKanPick(true)} />
+          <SealButton label="안깡" delay={nextDelay()} simplified={simplified} onClick={() => setKanPick(true)} />
         ))}
       {choices.shouminkanTiles.length > 0 && (
         <SealButton
           label="가깡"
+          delay={nextDelay()}
+          simplified={simplified}
           onClick={() =>
             onAction({ type: 'shouminkan', tileId: choices.shouminkanTiles[0] as number })
           }
         />
       )}
       {choices.canKyuushu && (
-        <SealButton label="구종" onClick={() => onAction({ type: 'kyuushu' })} />
+        <SealButton label="구종" delay={nextDelay()} simplified={simplified} onClick={() => onAction({ type: 'kyuushu' })} />
       )}
     </div>
   );

@@ -14,17 +14,18 @@ const DISCARD_ANCHOR: Record<RelPos, CSSProperties> = {
   left: { left: '23%', top: '50%' },
   right: { left: '77%', top: '50%' },
 };
+// 이름표는 모서리 쪽으로 빼서 상대 손패와 겹치지 않게 한다
 const PLATE_ANCHOR: Record<RelPos, CSSProperties> = {
-  self: { left: '50%', top: '97%' },
-  top: { left: '50%', top: '3%' },
-  left: { left: '7%', top: '50%' },
-  right: { left: '93%', top: '50%' },
+  self: { left: '50%', top: '95%' },
+  top: { left: '50%', top: '5%' },
+  left: { left: '15%', top: '86%' },
+  right: { left: '85%', top: '14%' },
 };
 const HAND_ANCHOR: Record<RelPos, CSSProperties> = {
   self: { display: 'none' },
-  top: { left: '50%', top: '11%' },
-  left: { left: '13%', top: '50%' },
-  right: { left: '87%', top: '50%' },
+  top: { left: '50%', top: '13%' },
+  left: { left: '8%', top: '50%' },
+  right: { left: '92%', top: '50%' },
 };
 
 const centered = (extra = ''): string =>
@@ -41,13 +42,19 @@ export function Board({
 
   return (
     <div
-      className="relative mx-auto aspect-square w-full max-w-[600px] rounded-3xl"
+      className="tex-wood relative mx-auto aspect-square w-full max-w-[600px] rounded-[26px] p-3"
       style={{
-        background:
-          'radial-gradient(ellipse at center, #23574a 0%, #1e4b3f 45%, #14332b 100%)',
-        boxShadow: 'inset 0 0 60px rgba(0,0,0,0.5)',
+        background: 'linear-gradient(150deg, #4a3524 0%, #35251a 55%, #241810 100%)',
+        boxShadow: '0 18px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,220,180,0.18)',
       }}
     >
+      <div
+        className="relative h-full w-full rounded-2xl"
+        style={{
+          background: 'radial-gradient(ellipse at center, #24594c 0%, #1e4b3f 45%, #14332b 100%)',
+          boxShadow: 'inset 0 0 70px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(200,162,75,0.18)',
+        }}
+      >
       {/* 중앙 정보판 */}
       <div className={centered()} style={{ left: '50%', top: '50%' }}>
         <CenterPanel round={game.round} />
@@ -91,9 +98,10 @@ export function Board({
         );
       })}
 
-      {/* 내 부로: 하단 우측 */}
-      <div className="absolute bottom-2 right-3">
-        <MeldRow melds={game.seats[game.mySeat]?.melds ?? []} width={22} />
+        {/* 내 부로: 하단 우측 */}
+        <div className="absolute bottom-2 right-3">
+          <MeldRow melds={game.seats[game.mySeat]?.melds ?? []} width={22} />
+        </div>
       </div>
     </div>
   );

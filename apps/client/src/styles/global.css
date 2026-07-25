@@ -1,9 +1,11 @@
 @import 'tailwindcss';
+@import './fonts.css';
 
 /* ── 디자인 토큰 (PLAN.md §4.1 — 오방색·단청 기반) ─────────────── */
 :root {
   --ink: #191b21;
   --giwa: #2c3040;
+  --giwa-hi: #3a4056;
   --night: #101528;
   --felt: #1e4b3f;
   --felt-edge: #14332b;
@@ -17,12 +19,14 @@
   --seal: #c03b2e;
 
   --ease-base: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-base: 180ms;
 }
 
 /* 토큰 → Tailwind 유틸리티 매핑 (bg-giwa, text-hanji 등) */
 @theme inline {
   --color-ink: var(--ink);
   --color-giwa: var(--giwa);
+  --color-giwa-hi: var(--giwa-hi);
   --color-night: var(--night);
   --color-felt: var(--felt);
   --color-felt-edge: var(--felt-edge);
@@ -35,11 +39,9 @@
   --color-gold-hi: var(--gold-hi);
   --color-seal: var(--seal);
 
-  /* 폰트 로컬 번들은 Phase 4 — 그 전까지는 시스템 폴백 (CDN 미사용) */
   --font-serif-kr: 'Noto Serif KR', 'Source Han Serif K', 'AppleMyungjo', serif;
   --font-sans-kr:
-    'Pretendard Variable', 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic',
-    sans-serif;
+    'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
 }
 
 body {
@@ -47,8 +49,145 @@ body {
   background-color: var(--night);
   color: var(--hanji);
   min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* ── 질감 유틸리티 (§4.3) ─────────────────────────────────────── */
+
+/* 한지: 미세한 종이 노이즈 (SVG turbulence, 불투명도 3~5%) */
+.tex-hanji::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 창호 격자: 은은한 창살 (보조 패널 배경) */
+.tex-changho::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.055;
+  background-image:
+    repeating-linear-gradient(0deg, var(--hanji) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(90deg, var(--hanji) 0 1px, transparent 1px 22px);
+}
+
+/* 나무결: 마작상 테두리·현판 */
+.tex-wood {
+  background-image:
+    repeating-linear-gradient(
+      92deg,
+      rgba(0, 0, 0, 0.16) 0 2px,
+      transparent 2px 7px,
+      rgba(255, 255, 255, 0.04) 7px 9px,
+      transparent 9px 16px
+    );
+}
+
+/* 금박 그라데이션 텍스트 */
+.text-gilt {
+  background: linear-gradient(160deg, var(--gold-hi) 0%, var(--gold) 45%, #8f6a26 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 붓 스트로크 리빌: 왼→오른쪽으로 글자가 드러남 */
+@keyframes brush-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.anim-brush {
+  animation: brush-reveal 600ms var(--ease-base) both;
+}
+
+/* 금빛 vignette 1회 맥동 (리치 선언) */
+@keyframes gold-pulse {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.anim-gold-vignette {
+  animation: gold-pulse 900ms var(--ease-base) both;
+}
+
+/* 도장 "쾅" 임팩트 (§4.3) */
+@keyframes seal-stamp {
+  0% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.96);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.anim-stamp {
+  animation: seal-stamp 220ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+/* 역만 금박 파티클: transform/opacity만 사용 (합성 스레드) */
+@keyframes gold-flake {
+  0% {
+    transform: translate3d(0, -30px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 640px, 0) rotate(260deg);
+    opacity: 0;
+  }
+}
+.anim-gold-flake {
+  animation-name: gold-flake;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* 연출 간소화: 모션 축소 */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

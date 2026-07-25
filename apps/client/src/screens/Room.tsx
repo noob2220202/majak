@@ -4,6 +4,8 @@ import type { RoomMemberView } from '@cheongiwa/protocol';
 import { Button, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
+import { NightSky } from './NightSky';
+import { DancheongBorder, Yeopjeon } from '../motifs/Motifs';
 
 const WIND_SEAT = ['동', '남', '서', '북'];
 
@@ -17,13 +19,13 @@ function SeatCard({ member }: { member: RoomMemberView | undefined }) {
   }
   return (
     <div
-      className={`grid h-28 place-items-center rounded-xl p-3 text-center ring-1 ${
-        member.ready ? 'bg-dan-green/20 ring-dan-green/40' : 'bg-hanji/10 ring-hanji/15'
+      className={`tex-hanji relative grid h-28 place-items-center overflow-hidden rounded-xl p-3 text-center ring-1 ${
+        member.ready ? 'bg-dan-green/20 ring-dan-green/45' : 'bg-hanji/10 ring-hanji/15'
       }`}
     >
       <div>
-        <p className="font-semibold text-hanji">
-          {member.isHost && <span className="mr-1 text-gold">◆</span>}
+        <p className="flex items-center justify-center gap-1.5 font-semibold text-hanji">
+          {member.isHost && <Yeopjeon size={13} />}
           {member.nickname}
         </p>
         <p className="mt-1 text-xs text-hanji/55">
@@ -71,8 +73,11 @@ function RulesPanel({ rules, isHost }: { rules: RuleSettings; isHost: boolean })
     send.roomSetRules({ ...rules, ...next });
   };
   return (
-    <Panel>
-      <h3 className="mb-3 font-semibold text-hanji">룰 설정</h3>
+    <Panel className="tex-changho relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0">
+        <DancheongBorder height={4} />
+      </div>
+      <h3 className="mb-3 pt-2 font-semibold text-hanji">룰 설정</h3>
       <div className="mb-3 flex gap-2">
         {(['hanchan', 'tonpuu'] as const).map((g) => (
           <button
@@ -107,6 +112,7 @@ function RulesPanel({ rules, isHost }: { rules: RuleSettings; isHost: boolean })
 export function Room() {
   const room = useGame((s) => s.room);
   const myNick = useGame((s) => s.nickname);
+  const simplified = useGame((s) => s.simplified);
   const [copied, setCopied] = useState(false);
   if (!room) return null;
 
@@ -125,8 +131,8 @@ export function Room() {
   };
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-giwa to-night px-4 py-8">
-      <div className="mx-auto max-w-3xl">
+    <NightSky simplified={simplified}>
+      <div className="mx-auto -mt-6 max-w-3xl px-4 pb-10">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-sm text-hanji/60">{room.practice ? '연습' : '친선'} 방</p>
@@ -192,6 +198,6 @@ export function Room() {
           </div>
         </div>
       </div>
-    </div>
+    </NightSky>
   );
 }

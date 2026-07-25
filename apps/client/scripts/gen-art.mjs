@@ -36,14 +36,30 @@ const options = {
   stage: value('stage', null),
   only: value('only', null),
   group: value('group', null),
-  model: value('model', 'gpt-image-1'),
+  /** 지정하면 전 항목을 이 모델로 강제 */
+  model: value('model', null),
   quality: value('quality', 'high'),
   concurrency: Number(value('concurrency', '2')),
 };
 
-/** 1024x1024 기준 대략 단가(USD). 정확한 값은 OpenAI 요금표를 확인할 것. */
-const UNIT_COST = { low: 0.02, medium: 0.06, high: 0.19 };
-const SIZE_FACTOR = { '1024x1024': 1, '1536x1024': 1.5, '1024x1536': 1.5 };
+/**
+ * 모델 선택 (2026-07 실측 기준)
+ * - gpt-image-2   : 구도·디테일이 가장 좋지만 **투명 배경 미지원**
+ * - gpt-image-1.5 : 투명 배경 지원, 품질도 충분
+ * 그래서 불투명은 2, 투명은 1.5로 나눠 쓴다.
+ */
+const OPAQUE_MODEL = 'gpt-image-2';
+const ALPHA_MODEL = 'gpt-image-1.5';
+const modelFor = (item) => options.model ?? (item.alpha ? ALPHA_MODEL : OPAQUE_MODEL);
+
+/** 출력 이미지 토큰 100만당 USD (요금표 확인 필요 — 실지출 추적용 근사) */
+const USD_PER_MTOK = 40;
+/** high 품질 기준 대략 출력 토큰 수 */
+const EST_TOKENS = { '1024x1024': 4200, '1536x1024': 6000, '1024x1536': 6000 };
+const estCost = (item) => ((EST_TOKENS[item.gen] ?? 4200) / 1_000_000) * USD_PER_MTOK;
+
+/** 실제 사용량 누적 */
+const spent = { tokens: 0, images: 0 };
 
 // ── 유틸 ──────────────────────────────────────────────────────────────
 
@@ -113,21 +129,21 @@ async function postProcess(buffer, item) {
 
 async function generate(item) {
   const body = {
-    model: options.model,
+    model: modelFor(item),
     prompt: item.prompt,
     size: item.gen,
+    quality: options.quality,
     n: 1,
   };
-  if (options.model === 'gpt-image-1') {
-    body.quality = options.quality;
-    body.output_format = item.format === 'jpeg' ? 'jpeg' : 'png';
-    if (item.alpha) {
-      body.background = 'transparent';
-      body.output_format = 'png';
-    }
+  // gpt-image-2 는 background 파라미터 자체를 거부한다 — 투명이 필요한 항목에만 붙인다
+  if (item.alpha) {
+    body.background = 'transparent';
+    body.output_format = 'png';
   }
 
   const json = await callApi('/images/generations', body);
+  spent.tokens += json.usage?.output_tokens ?? 0;
+  spent.images++;
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) {
     const url = json.data?.[0]?.url;
@@ -147,7 +163,7 @@ async function generateWithRef(item) {
   }
   const key = process.env.OPENAI_API_KEY;
   const form = new FormData();
-  form.append('model', options.model);
+  form.append('model', modelFor(item));
   form.append('prompt', item.prompt);
   form.append('size', item.gen);
   form.append('quality', options.quality);
@@ -165,6 +181,8 @@ async function generateWithRef(item) {
   });
   if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 300)}`);
   const json = await res.json();
+  spent.tokens += json.usage?.output_tokens ?? 0;
+  spent.images++;
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) throw new Error('응답에 이미지가 없습니다');
   return Buffer.from(b64, 'base64');
@@ -196,12 +214,10 @@ async function main() {
     return;
   }
 
-  const cost = list.reduce(
-    (sum, i) => sum + (UNIT_COST[options.quality] ?? 0.19) * (SIZE_FACTOR[i.gen] ?? 1),
-    0,
-  );
+  const cost = list.reduce((sum, i) => sum + estCost(i), 0);
 
-  console.log(`대상 ${list.length}장 · 품질 ${options.quality} · 모델 ${options.model}`);
+  console.log(`대상 ${list.length}장 · 품질 ${options.quality}`);
+  console.log(`모델: 불투명 ${OPAQUE_MODEL} / 투명 ${ALPHA_MODEL}${options.model ? ` (강제: ${options.model})` : ''}`);
   console.log(`예상 비용 약 $${cost.toFixed(2)} (재시도 제외, 요금표 확인 필요)\n`);
 
   const byGroup = new Map();
@@ -210,7 +226,9 @@ async function main() {
   console.log('');
 
   if (options.dryRun) {
-    for (const i of list) console.log(`  [${i.stage}] ${i.file.padEnd(28)} ${i.gen}${i.alpha ? ' 투명' : ''}`);
+    for (const i of list) {
+      console.log(`  [${i.stage}] ${i.file.padEnd(28)} ${i.gen}${i.alpha ? ' 투명' : '      '}  ${modelFor(i)}`);
+    }
     console.log('\n--dry-run 이라 생성하지 않았습니다.');
     return;
   }
@@ -251,6 +269,10 @@ async function main() {
   await Promise.all(Array.from({ length: Math.max(1, options.concurrency) }, worker));
 
   console.log(`\n완료 ${done - failed.length}/${list.length}`);
+  console.log(
+    `사용량: ${spent.images}콜 · 출력 ${spent.tokens.toLocaleString()}토큰 ` +
+      `· 실지출 약 $${((spent.tokens / 1_000_000) * USD_PER_MTOK).toFixed(2)}`,
+  );
   if (failed.length > 0) {
     console.log('실패:');
     for (const f of failed) console.log(`  ${f.id}: ${f.message}`);

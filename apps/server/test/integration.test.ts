@@ -92,6 +92,30 @@ function waitRoomState(
   });
 }
 
+/** 조건을 만족하는 game.choices 가 올 때까지 대기 (앞선 선택지는 패스로 넘긴다) */
+function waitChoices(
+  socket: ClientSocket,
+  predicate: (c: ChoicesView) => boolean,
+  timeoutMs = 30000,
+): Promise<ChoicesView> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off('game.choices', handler);
+      reject(new Error('game.choices 조건 대기 초과'));
+    }, timeoutMs);
+    const handler = (c: ChoicesView): void => {
+      if (predicate(c)) {
+        clearTimeout(timer);
+        socket.off('game.choices', handler);
+        resolve(c);
+        return;
+      }
+      if (c.kind === 'reaction') socket.emit('game.action', { type: 'pass' });
+    };
+    socket.on('game.choices', handler);
+  });
+}
+
 function autoAll(socket: ClientSocket): void {
   socket.emit('settings.auto', { autoWin: true, autoSkipCalls: true, autoTsumogiri: true });
 }
@@ -180,9 +204,10 @@ describe('불법 액션 거부 (§8.2)', () => {
     await started;
     const deal = await dealt;
 
-    // 내 차례가 올 때까지 대기
-    const choices = await once<ChoicesView>(socket, 'game.choices', 30000);
-    expect(choices.kind).toBe('turn');
+    // 내 차례가 올 때까지 대기.
+    // 첫 game.choices 가 항상 자기 차례인 것은 아니다 — 상대 타패에 울기 기회(reaction)가
+    // 먼저 올 수 있어, 시드에 따라 갈리는 플레이키 테스트였다. turn 이 올 때까지 넘긴다.
+    const choices = await waitChoices(socket, (c) => c.kind === 'turn');
     const legal = (choices as Extract<ChoicesView, { kind: 'turn' }>).discards;
 
     // 손에 없는 패 → 거부

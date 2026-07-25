@@ -108,7 +108,7 @@ function ItemCard({ item }: { item: ShopItem }) {
           src="/art/tag-inuse.webp"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -right-1 -top-3 z-10 w-9 drop-shadow-[0_3px_6px_rgba(0,0,0,0.6)]"
+          className="pointer-events-none absolute -right-2 -top-4 z-10 w-7 drop-shadow-[0_3px_6px_rgba(0,0,0,0.6)]"
         />
       )}
       <Preview item={item} />

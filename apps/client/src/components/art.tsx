@@ -4,14 +4,12 @@ import { memo, type CSSProperties, type ReactNode } from 'react';
  * 원화 UI 조각 (`public/art/*.webp`) 위에 글자를 얹는 공용 컴포넌트.
  *
  * 원화에는 기와 지붕·구름 장식이 붙어 있어 CSS로 늘리면 문양이 뭉개진다. 그래서
- * 9-slice 대신 **비율을 고정한 배경 이미지 + 안쪽 영역에 콘텐츠 배치** 방식을 쓴다.
- * 안쪽 비율(inset)은 이미지마다 달라 각 컴포넌트가 자기 값을 들고 있다.
+ * 9-slice 대신 **이미지를 그대로 두고 안쪽 영역(inset)에 글자만 얹는** 방식을 쓴다.
+ * 크기 비율은 이미지가 정하고, inset 만 컴포넌트가 들고 있다.
  */
 
 interface ArtSurfaceProps {
   src: string;
-  /** 이미지 원본 비율 (width / height) */
-  ratio: number;
   /** 콘텐츠가 앉는 안쪽 영역 (%) */
   inset: { top: string; bottom: string; left: string; right: string };
   children?: ReactNode;
@@ -20,9 +18,14 @@ interface ArtSurfaceProps {
   dim?: boolean;
 }
 
+/**
+ * 비율은 **이미지가 스스로 정한다.**
+ * 처음엔 `aspect-ratio`에 원본 비율을 하드코딩했는데, 원화를 갈아끼우자 전부 깨졌다
+ * (제목 현판 2.74→2.54, 탭 2.07→1.50). 이미지를 일반 블록으로 두고 글자만 그 위에
+ * 절대 배치하면 비율이 자동으로 따라와 다시는 안 깨진다.
+ */
 const Surface = memo(function Surface({
   src,
-  ratio,
   inset,
   children,
   className = '',
@@ -30,13 +33,13 @@ const Surface = memo(function Surface({
   dim = false,
 }: ArtSurfaceProps) {
   return (
-    <span className={`relative block ${className}`} style={{ aspectRatio: ratio, ...style }}>
+    <span className={`relative block ${className}`} style={style}>
       <img
         src={src}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-contain"
-        style={{ filter: dim ? 'saturate(0.45) brightness(0.7)' : undefined }}
+        className="block h-auto w-full"
+        style={{ filter: dim ? 'saturate(0.5) brightness(0.62)' : undefined }}
       />
       <span
         className="absolute flex items-center justify-center"
@@ -71,8 +74,7 @@ export function ArtCta({
     >
       <Surface
         src="/art/btn-cta.webp"
-        ratio={483 / 110}
-        inset={{ top: '14%', bottom: '26%', left: '20%', right: '20%' }}
+        inset={{ top: '12%', bottom: '30%', left: '18%', right: '18%' }}
         className="w-full transition group-hover:brightness-110"
       >
         <span
@@ -108,8 +110,7 @@ export function ArtOption({
     >
       <Surface
         src="/art/btn-option-off.webp"
-        ratio={301 / 120}
-        inset={{ top: '10%', bottom: '34%', left: '12%', right: '12%' }}
+        inset={{ top: '12%', bottom: '32%', left: '12%', right: '12%' }}
         dim={!active}
         className="w-full transition group-hover:brightness-110"
       >
@@ -136,8 +137,7 @@ export function ArtBack({ onClick, label = '뒤로' }: { onClick: () => void; la
     >
       <Surface
         src="/art/btn-back.webp"
-        ratio={181 / 169}
-        inset={{ top: '22%', bottom: '30%', left: '18%', right: '18%' }}
+        inset={{ top: '28%', bottom: '26%', left: '16%', right: '16%' }}
         className="w-full transition group-hover:brightness-110"
       >
         <span className="text-sm font-bold text-ink" style={{ fontFamily: 'var(--font-serif-kr)' }}>
@@ -154,15 +154,15 @@ export function ArtBack({ onClick, label = '뒤로' }: { onClick: () => void; la
 export function ArtTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <Surface
+      // 크림색 판은 세로 4~48% 구간뿐이고 아래 절반은 매듭 술이다
       src="/art/plaque-title.webp"
-      ratio={602 / 220}
-      inset={{ top: '14%', bottom: '30%', left: '12%', right: '12%' }}
+      inset={{ top: '4%', bottom: '54%', left: '8%', right: '8%' }}
       className={className}
       style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.5))' }}
     >
       <span
-        className="whitespace-nowrap text-[clamp(1.1rem,2.4vw,1.8rem)] font-black tracking-[0.2em] text-hanji"
-        style={{ fontFamily: 'var(--font-serif-kr)', textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}
+        className="whitespace-nowrap text-[clamp(0.95rem,2vw,1.6rem)] font-black tracking-[0.12em] text-ink"
+        style={{ fontFamily: 'var(--font-serif-kr)', textShadow: '0 1px 2px rgba(255,250,235,0.6)' }}
       >
         {children}
       </span>
@@ -170,7 +170,10 @@ export function ArtTitle({ children, className = '' }: { children: ReactNode; cl
   );
 }
 
-/** 탭 (선택/비선택 원화가 따로 있다) */
+/**
+ * 탭 (선택/비선택 원화가 따로 있다).
+ * 비선택 원화가 선택본보다 오히려 화려해 대비가 뒤집히므로, 비선택을 눌러서 죽인다.
+ */
 export function ArtTab({
   children,
   active,
@@ -189,8 +192,8 @@ export function ArtTab({
     >
       <Surface
         src={active ? '/art/tab-on.webp' : '/art/tab-off.webp'}
-        ratio={active ? 228 / 110 : 266 / 110}
-        inset={{ top: '18%', bottom: '18%', left: '10%', right: '10%' }}
+        inset={{ top: '20%', bottom: '22%', left: '10%', right: '10%' }}
+        dim={!active}
         className="w-full transition group-hover:brightness-110"
       >
         <span

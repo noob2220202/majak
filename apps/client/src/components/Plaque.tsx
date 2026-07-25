@@ -56,14 +56,14 @@ export const Plaque = memo(function Plaque({
       whileHover={disabled ? undefined : { scale: 1.035, y: -2 }}
       whileTap={disabled ? undefined : { scale: 0.985 }}
       className="relative block w-full disabled:opacity-45"
-      style={{ aspectRatio: '900 / 430' }}
       aria-label={label}
     >
+      {/* 비율은 이미지가 정한다 — 원화를 갈아끼워도 안 깨지게 */}
       <img
         src={`/art/plaque-menu-${id}.webp`}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-contain"
+        className="block h-auto w-full"
         style={{ filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.5))' }}
       />
       <span

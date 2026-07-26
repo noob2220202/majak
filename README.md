@@ -128,12 +128,34 @@ npx tsx scripts/play-cli.ts --nick 혼자 --practice      # 봇 3인과 즉시 �
 ### 1. 준비물
 
 ```sh
-node -v            # v20 이상 (v22 권장)
-corepack enable    # pnpm 준비
+node -v            # v20 이상이어야 한다 (v22 권장)
+corepack enable    # pnpm 준비 — 이걸 안 하면 pnpm 이 PATH 에 없다
+pnpm -v            # 10.33.0
 ```
 
-`better-sqlite3` 가 네이티브 모듈입니다. 미리 빌드된 바이너리가 없는 환경이면
-컴파일 도구가 필요합니다 (설치 중 `gyp` 오류가 나면 이것부터):
+`package.json` 의 `packageManager` 에 pnpm 버전이 박혀 있어 `corepack enable` 만 하면
+리포 안에서 알맞은 버전을 자동으로 씁니다.
+
+막히는 자리별 대처:
+
+| 증상 | 원인·대처 |
+|---|---|
+| `pnpm: command not found` | `corepack enable` 을 안 돌렸다. 위 명령부터 |
+| `node -v` 가 v20 미만 / `npm 8.5.1` 같은 옛 버전 | 배포판 기본 패키지다. 아래 Node 설치부터 |
+| `corepack: command not found` | corepack 이 빠진 빌드다. `npm i -g pnpm@10.33.0` 으로 대신 |
+| 다운로드 확인 프롬프트가 뜬다 | `export COREPACK_ENABLE_DOWNLOAD_PROMPT=0` |
+| `pnpm install` 중 `gyp` 오류 | `better-sqlite3` 네이티브 빌드 도구가 없다. 아래 컴파일 도구 설치 |
+
+Node 가 낮거나 없으면 (데비안·우분투):
+
+```sh
+sudo apt-get remove -y npm                       # 배포판 옛 npm 치우기
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+sudo apt-get install -y nodejs
+```
+
+`better-sqlite3` 는 네이티브 모듈입니다. 미리 빌드된 바이너리가 없는 환경이면
+컴파일 도구가 필요합니다:
 
 ```sh
 sudo apt-get install -y build-essential python3   # 데비안·우분투

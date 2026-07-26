@@ -120,11 +120,132 @@ npx tsx scripts/play-cli.ts --nick 혼자 --practice      # 봇 3인과 즉시 �
 `--auto`(전자동) · `--quick`(매칭 큐) · `--token <값>`(재접속). 서버 환경변수:
 `PORT` `DB_PATH` `STATIC_DIR` `TURN_BASE_MS` `RESERVE_MS` `RESULT_DELAY_MS` `BOT_DELAY_MS`
 
-## 프로덕션 (단일 프로세스 서빙)
+## 서버에 올리기 (도커 없이)
+
+클라 정적 파일과 WebSocket 서버가 **한 프로세스**라 포트 하나만 열면 됩니다.
+아래는 포트 7000 기준이고, `PORT` 만 바꾸면 어느 포트로든 됩니다.
+
+### 1. 준비물
+
+```sh
+node -v            # v20 이상 (v22 권장)
+corepack enable    # pnpm 준비
+```
+
+`better-sqlite3` 가 네이티브 모듈입니다. 미리 빌드된 바이너리가 없는 환경이면
+컴파일 도구가 필요합니다 (설치 중 `gyp` 오류가 나면 이것부터):
+
+```sh
+sudo apt-get install -y build-essential python3   # 데비안·우분투
+```
+
+### 2. 클론
+
+기본 브랜치가 아직 없고 작업 브랜치 하나만 있습니다.
+
+```sh
+git clone -b claude/cheongiwa-riichi-mahjong-6xko42 \
+  https://github.com/noob2220202/majak.git cheongiwa
+cd cheongiwa
+```
+
+### 3. 설치·빌드
+
+```sh
+pnpm install
+pnpm build          # 클라 정적 파일 + 서버 단일 번들
+```
+
+### 4. 실행
+
+```sh
+PORT=7000 DB_PATH=$PWD/data/cheongiwa.db pnpm --filter @cheongiwa/server start
+```
+
+- 클라 경로(`apps/client/dist`)는 자동으로 찾습니다. 다른 곳에 두려면 `STATIC_DIR` 지정.
+- `DB_PATH` 를 생략하면 실행 위치 기준 `data/cheongiwa.db` 에 만들어집니다. 어디에
+  쌓이는지 헷갈리지 않게 절대경로로 주는 편이 낫습니다.
+- `0.0.0.0` 에 바인딩하므로 같은 네트워크에서 바로 접속됩니다.
+
+확인:
+
+```sh
+curl -s localhost:7000/healthz     # {"ok":true,...}
+```
+
+브라우저에서 `http://<서버주소>:7000` — 닉네임 넣고 [연습 대국]이면 봇 3인과 바로 둡니다.
+
+방화벽이 있으면 포트를 열어 주세요.
+
+```sh
+sudo ufw allow 7000/tcp            # ufw
+```
+
+### 5. 상시 구동 (systemd)
+
+터미널을 닫아도 살아 있게 하려면 `/etc/systemd/system/cheongiwa.service`:
+
+```ini
+[Unit]
+Description=Cheongiwa mahjong server
+After=network.target
+
+[Service]
+Type=simple
+User=<사용자>
+WorkingDirectory=/home/<사용자>/cheongiwa
+Environment=NODE_ENV=production
+Environment=PORT=7000
+Environment=DB_PATH=/home/<사용자>/cheongiwa/data/cheongiwa.db
+ExecStart=/usr/bin/node apps/server/dist/index.cjs
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now cheongiwa
+journalctl -u cheongiwa -f          # 로그
+```
+
+### 6. 업데이트
+
+```sh
+git pull
+pnpm install
+pnpm build
+sudo systemctl restart cheongiwa
+```
+
+DB는 `data/` 에 따로 있으니 재빌드해도 전적·엽전·계정이 남습니다. 스키마가 바뀌면
+서버가 켜질 때 자동으로 맞춥니다.
+
+### 7. 도메인·HTTPS를 붙일 때
+
+WebSocket 을 쓰므로 리버스 프록시에 **업그레이드 헤더**를 반드시 넘겨야 합니다.
+빠뜨리면 화면은 떠도 대국이 시작되지 않습니다.
+
+```nginx
+location / {
+  proxy_pass http://127.0.0.1:7000;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_set_header Host $host;
+  proxy_read_timeout 3600s;     # 대국이 길다
+}
+```
+
+Caddy 면 `reverse_proxy 127.0.0.1:7000` 한 줄로 끝나고 HTTPS까지 자동입니다.
+
+### 도커로 하고 싶다면
 
 ```sh
 docker build -t cheongiwa .
-docker run --rm -p 8787:8787 -v cheongiwa-data:/app/data cheongiwa
+docker run -d -p 7000:8787 -v cheongiwa-data:/app/data cheongiwa
 ```
 
 ## 문서

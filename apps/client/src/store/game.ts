@@ -8,6 +8,7 @@ import {
   type TileId,
 } from '@cheongiwa/engine';
 import type {
+  AccountView,
   AuthWelcome,
   EmoteShowView,
   RankView,
@@ -84,6 +85,11 @@ interface GameStore {
   userId: string | null;
   nickname: string;
   stats: AuthWelcome['stats'] | null;
+  /** 로그인한 계정. null이면 게스트 (§3.1) */
+  account: AccountView | null;
+  /** 가입·복구 직후 한 번만 받는 복구 코드 — 사용자가 적어 두면 지운다 */
+  recoveryCode: string | null;
+  accountOpen: boolean;
 
   // 로비/매칭
   queue: QueueStateView | null;
@@ -117,6 +123,8 @@ interface GameStore {
   announces: AnnounceItem[];
 
   setShopOpen(open: boolean): void;
+  setAccountOpen(open: boolean): void;
+  clearRecoveryCode(): void;
   clearRewards(): void;
   /** 내가 장착한 코스메틱 (없으면 기본값) */
   equipped(slot: ShopSlot): string | undefined;
@@ -188,6 +196,9 @@ export const useGame = create<GameStore>((set, get) => ({
   userId: null,
   nickname: '',
   stats: null,
+  account: null,
+  recoveryCode: null,
+  accountOpen: false,
   queue: null,
   fillOffer: null,
   room: null,
@@ -204,6 +215,14 @@ export const useGame = create<GameStore>((set, get) => ({
   simplified: prefs.simplified ?? false,
   sound: { muted: prefs.muted ?? false, volume: prefs.volume ?? 0.6 },
   announces: [],
+
+  setAccountOpen(open) {
+    set({ accountOpen: open, error: null });
+  },
+
+  clearRecoveryCode() {
+    set({ recoveryCode: null });
+  },
 
   setShopOpen(open) {
     set({ shopOpen: open });
@@ -469,12 +488,39 @@ export function initNetworking(): void {
       userId: w.userId,
       nickname: w.nickname,
       stats: w.stats,
+      account: w.account,
+      // 복구 코드는 가입·재설정 응답에만 실린다. 여기서 안 받아 두면 다시는 못 본다.
+      recoveryCode: w.recoveryCode ?? null,
+      // 복구 코드를 받았으면 적어 둘 수 있게 계정 창을 띄운 채로 둔다
+      accountOpen: w.recoveryCode ? true : false,
+      error: null,
       wallet: w.wallet,
       rank: w.rank,
       rewards: w.pendingRewards,
       screen: w.activeGameId ? get().screen : 'lobby',
     });
     if (w.activeGameId) socket.emit('sync.request');
+  });
+
+  socket.on('auth.loggedOut', () => {
+    localStorage.removeItem('cheongiwa.token');
+    localStorage.removeItem('cheongiwa.nick');
+    set({
+      userId: null,
+      nickname: '',
+      stats: null,
+      account: null,
+      recoveryCode: null,
+      accountOpen: false,
+      wallet: null,
+      rank: null,
+      rewards: null,
+      room: null,
+      queue: null,
+      game: null,
+      gameEnd: null,
+      screen: 'auth',
+    });
   });
 
   socket.on('lobby.queue', (q: QueueStateView) => {

@@ -4,6 +4,10 @@ export type { RuleSettings } from './rules';
 
 export {
   AuthHelloSchema,
+  AuthSignUpSchema,
+  AuthLogInSchema,
+  AuthChangePasswordSchema,
+  AuthRecoverSchema,
   RoomCodeSchema,
   RoomReadySchema,
   GameActionSchema,
@@ -13,6 +17,10 @@ export {
 } from './actions';
 export type {
   AuthHello,
+  AuthSignUp,
+  AuthLogIn,
+  AuthChangePassword,
+  AuthRecover,
   RoomCode,
   GameActionPayload,
   AutoSettings,
@@ -22,6 +30,7 @@ export type {
 export type {
   ServerHello,
   PlayerStats,
+  AccountView,
   AuthWelcome,
   RoomMemberView,
   RoomStateView,

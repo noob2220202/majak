@@ -11,6 +11,8 @@ import { GameScreen } from './screens/game/GameScreen';
 function ErrorToast() {
   const error = useGame((s) => s.error);
   const dismiss = useGame((s) => s.dismissError);
+  // 로그인·계정 화면은 오류를 입력 칸 바로 아래에 띄운다 — 토스트까지 겹치면 두 번 읽힌다
+  const inlineHandled = useGame((s) => s.screen === 'auth' || s.accountOpen);
   useEffect(() => {
     if (!error) return;
     const id = setTimeout(dismiss, 4000);
@@ -19,7 +21,7 @@ function ErrorToast() {
 
   return (
     <AnimatePresence>
-      {error && (
+      {error && !inlineHandled && (
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}

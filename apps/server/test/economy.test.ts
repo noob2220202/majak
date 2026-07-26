@@ -23,9 +23,12 @@ const DAY = 24 * 60 * 60 * 1000;
 const NOON = Date.parse('2026-03-05T12:00:00.000Z');
 
 function addUser(id: string): string {
-  db.prepare(
-    'INSERT INTO users (id, nickname, token_hash, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)',
-  ).run(id, id, `hash:${id}`, NOON, NOON);
+  db.prepare('INSERT INTO users (id, nickname, created_at, last_seen_at) VALUES (?, ?, ?, ?)').run(
+    id,
+    id,
+    NOON,
+    NOON,
+  );
   db.prepare('INSERT INTO wallets (user_id, balance) VALUES (?, 0)').run(id);
   return id;
 }

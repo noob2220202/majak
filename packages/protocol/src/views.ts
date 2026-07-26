@@ -30,11 +30,22 @@ export interface PlayerStats {
   avgRank: number | null;
 }
 
+/** 로그인한 계정. 게스트는 null (§3.1) */
+export interface AccountView {
+  loginId: string;
+}
+
 export interface AuthWelcome {
   userId: string;
   nickname: string;
   /** 최초 발급 시에만 포함 — 클라가 localStorage에 보관 */
   token?: string;
+  /** null이면 게스트 (아이디·비밀번호 없이 이 브라우저에만 매인 상태) */
+  account: AccountView | null;
+  /**
+   * 가입·복구 직후 딱 한 번만 실린다. 서버는 해시만 갖고 있어 다시 보여 줄 수 없다.
+   */
+  recoveryCode?: string;
   stats: PlayerStats;
   /** 재접속 가능한 진행 중 대국 */
   activeGameId: string | null;
@@ -267,6 +278,7 @@ export const SERVER_EVENTS = [
   'wallet.rewards',
   'rank.state',
   'emote.show',
+  'auth.loggedOut',
   'server.error',
 ] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];

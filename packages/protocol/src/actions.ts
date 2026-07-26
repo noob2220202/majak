@@ -18,6 +18,34 @@ export const AuthHelloSchema = z
   });
 export type AuthHello = z.infer<typeof AuthHelloSchema>;
 
+/**
+ * 정식 계정 (§3.1). 아이디는 서버가 다시 소문자로 정규화하므로 여기서는 길이만 본다.
+ * 비밀번호 규칙(길이·아이디와 동일 금지)도 서버가 최종 판정한다 — 클라 검증은 안내용이다.
+ */
+const loginId = z.string().trim().min(4).max(16);
+const password = z.string().min(8).max(128);
+const nickname = z.string().trim().min(1).max(12);
+
+export const AuthSignUpSchema = z.object({ loginId, password, nickname });
+export type AuthSignUp = z.infer<typeof AuthSignUpSchema>;
+
+export const AuthLogInSchema = z.object({ loginId, password });
+export type AuthLogIn = z.infer<typeof AuthLogInSchema>;
+
+export const AuthChangePasswordSchema = z.object({
+  current: z.string().min(1).max(128),
+  next: password,
+});
+export type AuthChangePassword = z.infer<typeof AuthChangePasswordSchema>;
+
+export const AuthRecoverSchema = z.object({
+  loginId,
+  /** 대시·소문자를 섞어 넣어도 서버가 정규화한다 */
+  recoveryCode: z.string().trim().min(20).max(32),
+  password,
+});
+export type AuthRecover = z.infer<typeof AuthRecoverSchema>;
+
 export const RoomCodeSchema = z.object({
   code: z.string().regex(/^[A-Z0-9]{6}$/),
 });
@@ -53,6 +81,11 @@ export const FillAcceptSchema = z.object({ accept: z.boolean() });
 /** 클라 → 서버 이벤트 이름 (§3.3 표 + 확장분은 ASSUMPTIONS 기록) */
 export const CLIENT_EVENTS = [
   'auth.hello',
+  'auth.signUp',
+  'auth.logIn',
+  'auth.logOut',
+  'auth.changePassword',
+  'auth.recover',
   'lobby.quickMatch',
   'lobby.cancel',
   'lobby.practice',

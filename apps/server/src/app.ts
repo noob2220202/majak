@@ -6,7 +6,11 @@ import { Server as SocketIOServer, type Socket } from 'socket.io';
 import { z } from 'zod';
 import type { RoundAction } from '@cheongiwa/engine';
 import {
+  AuthChangePasswordSchema,
   AuthHelloSchema,
+  AuthLogInSchema,
+  AuthRecoverSchema,
+  AuthSignUpSchema,
   AutoSettingsSchema,
   FillAcceptSchema,
   GameActionSchema,
@@ -20,6 +24,15 @@ import {
   type AuthWelcome,
   type ServerErrorView,
 } from '@cheongiwa/protocol';
+import {
+  changePassword,
+  findById,
+  logIn,
+  resetPassword,
+  revokeSession,
+  signUp,
+  type AccountOutcome,
+} from './accounts';
 import { authenticate, statsOf } from './auth';
 import { openDatabase, type AppDatabase } from './db';
 import { grantGameRewards, grantReliefIfNeeded } from './economy';
@@ -55,6 +68,8 @@ export function resolveDefaultStaticDir(): string | null {
 interface SocketData {
   userId: string | null;
   nickname: string;
+  /** 이 연결이 쓰고 있는 세션 토큰 — 로그아웃·비밀번호 변경에서 이것만 남기거나 지운다 */
+  token: string | null;
 }
 
 export interface ServerContext {
@@ -164,8 +179,11 @@ export async function buildServer(options: BuildServerOptions = {}) {
     socket.emit('server.error', { code, message } satisfies ServerErrorView);
   };
 
+  /** 게스트면 null */
+  const accountLoginId = (userId: string): string | null => findById(db, userId)?.login_id ?? null;
+
   io.on('connection', (socket) => {
-    const data: SocketData = { userId: null, nickname: '' };
+    const data: SocketData = { userId: null, nickname: '', token: null };
     socket.emit('server.hello', { protocolVersion: PROTOCOL_VERSION });
 
     const requireAuth = (): string | null => {
@@ -176,28 +194,116 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return data.userId;
     };
 
-    /** zod 검증 + 에러 통일 래퍼 */
+    /** zod 검증 + 에러 통일 래퍼 (비동기 핸들러도 받는다 — 비밀번호 해싱이 비동기다) */
     const on = <S extends z.ZodTypeAny>(
       event: string,
       schema: S | null,
-      handler: (payload: z.infer<S>) => void,
+      handler: (payload: z.infer<S>) => void | Promise<void>,
     ): void => {
+      const fail = (error: unknown): void => {
+        if (error instanceof z.ZodError) {
+          sendError(socket, 'BAD_REQUEST', `${event}: 잘못된 요청`);
+        } else {
+          sendError(socket, 'BAD_REQUEST', error instanceof Error ? error.message : '요청 처리 실패');
+        }
+      };
       socket.on(event, (raw: unknown) => {
         try {
           const payload = schema ? schema.parse(raw ?? {}) : (undefined as z.infer<S>);
-          handler(payload);
+          void Promise.resolve(handler(payload)).catch(fail);
         } catch (error) {
-          if (error instanceof z.ZodError) {
-            sendError(socket, 'BAD_REQUEST', `${event}: 잘못된 요청`);
-          } else {
-            sendError(
-              socket,
-              'BAD_REQUEST',
-              error instanceof Error ? error.message : '요청 처리 실패',
-            );
-          }
+          fail(error);
         }
       });
+    };
+
+    /**
+     * 인증 성공 후 공통 처리: 소켓에 신원을 붙이고, 진행 중 대국이 있으면 다시 잇고,
+     * 지갑·등급·빈곤 구제를 실어 `auth.welcome` 을 보낸다.
+     */
+    const welcome = (
+      user: { userId: string; nickname: string; loginId: string | null },
+      extra: { token?: string; recoveryCode?: string } = {},
+    ): void => {
+      const previous = data.userId;
+      if (previous && previous !== user.userId && socketsByUser.get(previous) === socket) {
+        socketsByUser.delete(previous);
+      }
+      data.userId = user.userId;
+      data.nickname = user.nickname;
+      if (extra.token) data.token = extra.token;
+
+      // 진행 중 대국 재접속 바인딩
+      const activeId = sessionByUser.get(user.userId) ?? null;
+      let activeGameId: string | null = null;
+      if (activeId) {
+        const session = sessions.get(activeId);
+        if (session && !session.isEnded && session.rebind(user.userId, socket) !== null) {
+          activeGameId = activeId;
+        }
+      }
+
+      socketsByUser.set(user.userId, socket);
+      // 빈곤 구제: 잔액이 기준선 미만이면 하루 1회 충전 (§6.2)
+      const relief = grantReliefIfNeeded(db, user.userId);
+
+      const payload: AuthWelcome = {
+        userId: user.userId,
+        nickname: user.nickname,
+        account: user.loginId === null ? null : { loginId: user.loginId },
+        stats: statsOf(db, user.userId),
+        activeGameId,
+        wallet: walletView(db, user.userId),
+        rank: rankOf(db, user.userId),
+        pendingRewards: relief,
+      };
+      if (extra.token) payload.token = extra.token;
+      if (extra.recoveryCode) payload.recoveryCode = extra.recoveryCode;
+      socket.emit('auth.welcome', payload);
+    };
+
+    /**
+     * 비밀번호 해싱은 한 번에 16MB·수십 ms를 쓴다. 인증 전에도 부를 수 있는 창구라
+     * 연결 하나가 연달아 두드리면 그것만으로 서버가 눌린다 — 한 연결당 한 번에 하나,
+     * 그리고 최소 간격을 둔다. (아이디별 실패 잠금은 accounts.ts 가 따로 센다)
+     */
+    // 사람이 비밀번호를 고쳐 치고 다시 누르는 데는 이보다 훨씬 오래 걸린다.
+    // 정정 재시도를 막지 않으면서 자동 연타만 걸러내는 선.
+    const AUTH_MIN_GAP_MS = 150;
+    let authInFlight = false;
+    let lastAuthAt = 0;
+    const throttleAuth = (): boolean => {
+      const now = Date.now();
+      if (authInFlight || now - lastAuthAt < AUTH_MIN_GAP_MS) {
+        sendError(socket, 'BAD_REQUEST', '잠시 후 다시 시도하세요');
+        return true;
+      }
+      lastAuthAt = now;
+      authInFlight = true;
+      return false;
+    };
+
+    /** 대국·방에 묶인 채로 신원을 갈아치우면 좌석 주인이 어긋난다 */
+    const busy = (): boolean => {
+      const userId = data.userId;
+      if (userId && sessionByUser.has(userId)) {
+        sendError(socket, 'BAD_REQUEST', '대국 중에는 계정을 바꿀 수 없습니다');
+        return true;
+      }
+      return false;
+    };
+
+    const afterAccount = (result: AccountOutcome): void => {
+      if (!result.ok) {
+        sendError(socket, 'BAD_REQUEST', result.message);
+        return;
+      }
+      const extra: { token: string; recoveryCode?: string } = { token: result.token };
+      if (result.recoveryCode) extra.recoveryCode = result.recoveryCode;
+      welcome(
+        { userId: result.userId, nickname: result.nickname, loginId: result.loginId },
+        extra,
+      );
     };
 
     on('auth.hello', AuthHelloSchema, (payload) => {
@@ -206,34 +312,70 @@ export async function buildServer(options: BuildServerOptions = {}) {
         sendError(socket, 'UNAUTHENTICATED', '유효하지 않은 토큰입니다');
         return;
       }
-      data.userId = authed.userId;
-      data.nickname = authed.nickname;
+      data.token = authed.issuedToken ?? payload.token ?? null;
+      const extra = authed.issuedToken ? { token: authed.issuedToken } : {};
+      welcome(authed, extra);
+    });
 
-      // 진행 중 대국 재접속 바인딩
-      const activeId = sessionByUser.get(authed.userId) ?? null;
-      let activeGameId: string | null = null;
-      if (activeId) {
-        const session = sessions.get(activeId);
-        if (session && !session.isEnded && session.rebind(authed.userId, socket) !== null) {
-          activeGameId = activeId;
-        }
+    on('auth.signUp', AuthSignUpSchema, async (payload) => {
+      if (busy() || throttleAuth()) return;
+      try {
+        // 게스트로 놀던 중이면 그 계정을 승격한다 — 엽전·전적·등급·코스메틱이 그대로 남는다
+        if (data.userId) rooms.leave(data.userId);
+        afterAccount(await signUp(db, { ...payload, guestUserId: data.userId }));
+      } finally {
+        authInFlight = false;
       }
+    });
 
-      socketsByUser.set(authed.userId, socket);
-      // 빈곤 구제: 잔액이 기준선 미만이면 하루 1회 충전 (§6.2)
-      const relief = grantReliefIfNeeded(db, authed.userId);
+    on('auth.logIn', AuthLogInSchema, async (payload) => {
+      if (busy() || throttleAuth()) return;
+      try {
+        if (data.userId) rooms.leave(data.userId);
+        afterAccount(await logIn(db, payload));
+      } finally {
+        authInFlight = false;
+      }
+    });
 
-      const welcome: AuthWelcome = {
-        userId: authed.userId,
-        nickname: authed.nickname,
-        stats: statsOf(db, authed.userId),
-        activeGameId,
-        wallet: walletView(db, authed.userId),
-        rank: rankOf(db, authed.userId),
-        pendingRewards: relief,
-      };
-      if (authed.issuedToken) welcome.token = authed.issuedToken;
-      socket.emit('auth.welcome', welcome);
+    on('auth.recover', AuthRecoverSchema, async (payload) => {
+      if (busy() || throttleAuth()) return;
+      try {
+        if (data.userId) rooms.leave(data.userId);
+        afterAccount(await resetPassword(db, payload));
+      } finally {
+        authInFlight = false;
+      }
+    });
+
+    on('auth.logOut', null, () => {
+      const userId = requireAuth();
+      if (!userId) return;
+      if (busy()) return;
+      rooms.leave(userId);
+      matchmaking.cancel(userId);
+      if (data.token) revokeSession(db, data.token);
+      if (socketsByUser.get(userId) === socket) socketsByUser.delete(userId);
+      data.userId = null;
+      data.nickname = '';
+      data.token = null;
+      socket.emit('auth.loggedOut', {});
+    });
+
+    on('auth.changePassword', AuthChangePasswordSchema, async (payload) => {
+      const userId = requireAuth();
+      if (!userId || throttleAuth()) return;
+      try {
+        // 지금 쓰는 기기는 남기고 나머지 세션만 끊는다
+        const result = await changePassword(db, userId, payload, data.token);
+        if (!result.ok) {
+          sendError(socket, 'BAD_REQUEST', result.message);
+          return;
+        }
+        welcome({ userId, nickname: data.nickname, loginId: accountLoginId(userId) });
+      } finally {
+        authInFlight = false;
+      }
     });
 
     on('lobby.quickMatch', null, () => {

@@ -1,24 +1,33 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { PlayerStats } from '@cheongiwa/protocol';
+import { createHash, randomUUID } from 'node:crypto';
+import { issueSession } from './accounts';
 import type { AppDatabase } from './db';
 
 /**
- * 게스트 인증 (PLAN.md §3.1): 닉네임 → 세션 토큰 발급 (클라 localStorage 보관).
- * 토큰은 해시로만 저장한다. 정식 계정/OAuth는 Phase 5.
+ * 접속 인증 (PLAN.md §3.1).
+ *
+ * 두 갈래다.
+ *  - **게스트**: 닉네임만 받아 계정 없이 바로 입장. `users.login_id` 가 NULL 이다.
+ *  - **세션 토큰**: 게스트든 정식 계정이든 재접속은 이 토큰 하나로 처리한다.
+ *
+ * 아이디/비밀번호 가입·로그인은 `accounts.ts` 가 맡는다.
  */
 
 export interface AuthedUser {
   userId: string;
   nickname: string;
+  /** 게스트면 null */
+  loginId: string | null;
   /** 신규 발급 시에만 존재 */
   issuedToken?: string;
 }
 
 const sha256 = (v: string): string => createHash('sha256').update(v).digest('hex');
 
-interface UserRow {
+interface SessionRow {
   id: string;
   nickname: string;
+  login_id: string | null;
 }
 
 export function authenticate(
@@ -27,28 +36,35 @@ export function authenticate(
 ): AuthedUser | null {
   const now = Date.now();
   if (input.token) {
+    // 세션 표가 유일한 진실이다 — 비밀번호를 바꾸면 그 행들이 지워지므로 여기서 걸린다
     const row = db
-      .prepare('SELECT id, nickname FROM users WHERE token_hash = ?')
-      .get(sha256(input.token)) as UserRow | undefined;
+      .prepare(
+        `SELECT u.id, u.nickname, u.login_id
+         FROM sessions s JOIN users u ON u.id = s.user_id
+         WHERE s.token_hash = ?`,
+      )
+      .get(sha256(input.token)) as SessionRow | undefined;
     if (!row) return null;
-    const nickname = input.nickname?.trim() || row.nickname;
-    db.prepare('UPDATE users SET last_seen_at = ?, nickname = ? WHERE id = ?').run(
+    // 닉네임은 서버 기록이 기준이다 — 다른 기기에서 바꾼 이름을 옛 기기가 되돌리면 안 된다
+    db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').run(now, row.id);
+    db.prepare('UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?').run(
       now,
-      nickname,
-      row.id,
+      sha256(input.token),
     );
-    return { userId: row.id, nickname };
+    return { userId: row.id, nickname: row.nickname, loginId: row.login_id };
   }
 
   const nickname = input.nickname?.trim();
   if (!nickname) return null;
-  const token = randomBytes(32).toString('hex');
   const userId = randomUUID();
-  db.prepare(
-    'INSERT INTO users (id, nickname, token_hash, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)',
-  ).run(userId, nickname, sha256(token), now, now);
-  db.prepare('INSERT INTO wallets (user_id, balance) VALUES (?, 0)').run(userId);
-  return { userId, nickname, issuedToken: token };
+  db.transaction(() => {
+    db.prepare(
+      'INSERT INTO users (id, nickname, created_at, last_seen_at) VALUES (?, ?, ?, ?)',
+    ).run(userId, nickname, now, now);
+    db.prepare('INSERT INTO wallets (user_id, balance) VALUES (?, 0)').run(userId);
+  })();
+  const token = issueSession(db, userId, now);
+  return { userId, nickname, loginId: null, issuedToken: token };
 }
 
 export function statsOf(db: AppDatabase, userId: string): PlayerStats {

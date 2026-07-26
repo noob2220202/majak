@@ -16,18 +16,100 @@ export function openDatabase(dbPath: string): AppDatabase {
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
+  // 옛 스키마(users.token_hash)를 먼저 걷어내야 아래 CREATE 들과 모양이 맞는다
+  upgradeLegacyUsers(db);
   migrate(db);
   return db;
 }
 
+/** users 가 옛 모양(token_hash 칸)인지 */
+function isLegacyUsers(db: AppDatabase): boolean {
+  const cols = db.pragma('table_info(users)') as Array<{ name: string }>;
+  return cols.length > 0 && cols.some((c) => c.name === 'token_hash');
+}
+
+/**
+ * 정식 계정 도입 (PLAN.md §3.1 "정식 계정은 Phase 5") 이전 DB 승격.
+ *
+ * 세션 토큰이 `users.token_hash` 한 칸에 있으면 계정당 기기가 하나뿐이라
+ * (휴대폰에서 로그인하면 데스크톱이 끊긴다) 별도 `sessions` 표로 뺀다.
+ * NOT NULL UNIQUE 제약은 ALTER 로 못 푸므로 users 를 통째로 재구축한다.
+ * 기존 게스트는 토큰째 옮겨 재접속이 끊기지 않는다.
+ */
+function upgradeLegacyUsers(db: AppDatabase): void {
+  if (!isLegacyUsers(db)) return;
+
+  // 외래키가 users 를 참조하므로 재구축 동안만 끈다 (트랜잭션 안에서는 무시되는 PRAGMA다)
+  db.pragma('foreign_keys = OFF');
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE users_v1 (
+        id TEXT PRIMARY KEY,
+        nickname TEXT NOT NULL,
+        login_id TEXT UNIQUE,
+        password_hash TEXT,
+        recovery_hash TEXT,
+        created_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL
+      );
+
+      INSERT INTO users_v1 (id, nickname, login_id, password_hash, recovery_hash,
+                            created_at, last_seen_at)
+        SELECT id, nickname, NULL, NULL, NULL, created_at, last_seen_at FROM users;
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        created_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL
+      );
+
+      INSERT OR IGNORE INTO sessions (token_hash, user_id, created_at, last_seen_at)
+        SELECT token_hash, id, created_at, last_seen_at FROM users;
+
+      DROP TABLE users;
+      ALTER TABLE users_v1 RENAME TO users;
+    `);
+  })();
+  db.pragma('foreign_keys = ON');
+
+  const broken = db.pragma('foreign_key_check') as unknown[];
+  if (broken.length > 0) {
+    throw new Error(`계정 마이그레이션 후 외래키 위반 ${broken.length}건`);
+  }
+}
+
 function migrate(db: AppDatabase): void {
   db.exec(`
+    -- 게스트는 login_id 가 NULL 이다. 가입하면 같은 행에 아이디·비밀번호가 붙어
+    -- 엽전·전적·등급·코스메틱을 그대로 이어받는다.
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       nickname TEXT NOT NULL,
-      token_hash TEXT NOT NULL UNIQUE,
+      -- 소문자로만 저장해 대소문자 구분 없이 유일하다
+      login_id TEXT UNIQUE,
+      password_hash TEXT,
+      -- 이메일이 없으므로 비밀번호 분실 대비는 1회용 복구 코드다 (해시로만 보관)
+      recovery_hash TEXT,
       created_at INTEGER NOT NULL,
       last_seen_at INTEGER NOT NULL
+    );
+
+    -- 기기별 세션 토큰. 계정 하나가 여러 기기에서 동시에 접속할 수 있다.
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      last_seen_at INTEGER NOT NULL
+    );
+
+    -- 소셜 로그인(구글·카카오·네이버)을 나중에 붙일 자리. 지금은 비어 있다.
+    CREATE TABLE IF NOT EXISTS identities (
+      provider TEXT NOT NULL,
+      provider_user_id TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (provider, provider_user_id)
     );
 
     CREATE TABLE IF NOT EXISTS games (
@@ -104,5 +186,7 @@ function migrate(db: AppDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
     CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id);
     CREATE INDEX IF NOT EXISTS idx_ledger_user_game ON ledger(user_id, game_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   `);
 }
+

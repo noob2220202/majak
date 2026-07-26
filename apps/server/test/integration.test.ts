@@ -537,3 +537,75 @@ describe('이모티콘 소통 (§7 Phase 5)', () => {
     expect((await afterBuy).itemId).toBe(paid?.id);
   }, 40000);
 });
+
+describe('정식 계정 (§3.1)', () => {
+  it('게스트 → 가입 → 로그아웃 → 다른 기기 로그인까지 자산이 그대로 따라온다', async () => {
+    const { url, app } = await startServer();
+    const db = contextOf(app).db;
+
+    // 1) 게스트로 입장해 엽전을 벌어 둔다
+    const guestSocket = connect(url);
+    const guest = await hello(guestSocket, '나그네');
+    expect(guest.account).toBeNull();
+    db.prepare('UPDATE wallets SET balance = 3000 WHERE user_id = ?').run(guest.userId);
+
+    // 2) 가입 — 같은 계정을 이어받으므로 userId 도 엽전도 그대로다
+    const signedUp = once<AuthWelcome>(guestSocket, 'auth.welcome');
+    guestSocket.emit('auth.signUp', {
+      loginId: 'nageune',
+      password: 'giwa-1234',
+      nickname: '나그네',
+    });
+    const account = await signedUp;
+    expect(account.userId).toBe(guest.userId);
+    expect(account.account?.loginId).toBe('nageune');
+    expect(account.wallet.balance).toBe(3000);
+    // 복구 코드는 이때 딱 한 번만 실린다
+    expect(account.recoveryCode).toMatch(/^[A-Z2-9]{5}(-[A-Z2-9]{5}){3}$/);
+    const token = account.token as string;
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+
+    // 3) 같은 아이디로는 다시 가입할 수 없다
+    const other = connect(url);
+    await hello(other, '남');
+    const dupError = once<ServerErrorView>(other, 'server.error', 5000);
+    other.emit('auth.signUp', { loginId: 'nageune', password: 'giwa-1234', nickname: '남' });
+    expect((await dupError).code).toBe('BAD_REQUEST');
+
+    // 4) 로그아웃하면 토큰이 죽는다
+    const loggedOut = once<unknown>(guestSocket, 'auth.loggedOut', 5000);
+    guestSocket.emit('auth.logOut');
+    await loggedOut;
+    const stale = connect(url);
+    const staleError = once<ServerErrorView>(stale, 'server.error', 5000);
+    stale.emit('auth.hello', { token });
+    expect((await staleError).code).toBe('UNAUTHENTICATED');
+
+    // 5) 다른 기기에서 아이디·비밀번호로 들어오면 엽전이 그대로 있다
+    const phone = connect(url);
+    const relogin = once<AuthWelcome>(phone, 'auth.welcome');
+    phone.emit('auth.logIn', { loginId: 'NaGeuNe', password: 'giwa-1234' });
+    const back = await relogin;
+    expect(back.userId).toBe(guest.userId);
+    expect(back.wallet.balance).toBe(3000);
+    expect(back.account?.loginId).toBe('nageune');
+    // 재로그인 응답에는 복구 코드가 실리지 않는다 (가입·재설정 때만)
+    expect(back.recoveryCode).toBeUndefined();
+  }, 30000);
+
+  it('대국 중에는 계정을 바꿀 수 없다', async () => {
+    const { url } = await startServer();
+    const socket = connect(url);
+    await hello(socket, '대국중');
+
+    const started = once<GameStartView>(socket, 'game.start');
+    socket.emit('lobby.practice');
+    await started;
+
+    const rejected = once<ServerErrorView>(socket, 'server.error', 5000);
+    socket.emit('auth.logIn', { loginId: 'someone', password: 'giwa-1234' });
+    const err = await rejected;
+    expect(err.code).toBe('BAD_REQUEST');
+    expect(err.message).toContain('대국 중');
+  }, 30000);
+});

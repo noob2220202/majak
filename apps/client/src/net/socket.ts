@@ -19,6 +19,21 @@ export const send = {
   authHello(payload: { nickname?: string; token?: string }): void {
     getSocket().emit('auth.hello', payload);
   },
+  authSignUp(payload: { loginId: string; password: string; nickname: string }): void {
+    getSocket().emit('auth.signUp', payload);
+  },
+  authLogIn(payload: { loginId: string; password: string }): void {
+    getSocket().emit('auth.logIn', payload);
+  },
+  authLogOut(): void {
+    getSocket().emit('auth.logOut');
+  },
+  authChangePassword(payload: { current: string; next: string }): void {
+    getSocket().emit('auth.changePassword', payload);
+  },
+  authRecover(payload: { loginId: string; recoveryCode: string; password: string }): void {
+    getSocket().emit('auth.recover', payload);
+  },
   quickMatch(): void {
     getSocket().emit('lobby.quickMatch');
   },

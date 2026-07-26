@@ -100,7 +100,6 @@ export class Matchmaking {
           inQueue: false,
           position: 0,
           waitingMs: 0,
-          rating: entry.rating,
           band: 0,
         } satisfies QueueStateView);
       }
@@ -259,7 +258,6 @@ export class Matchmaking {
         inQueue: true,
         position: index + 1,
         waitingMs: now - entry.joinedAt,
-        rating: Math.round(entry.rating * 10) / 10,
         band: Math.round(this.bandFor(entry, now)),
       } satisfies QueueStateView);
     });

@@ -78,9 +78,10 @@ export interface QueueStateView {
   inQueue: boolean;
   position: number;
   waitingMs: number;
-  /** 내 실력 점수 (§3.2 레이팅 매칭) */
-  rating: number;
-  /** 지금 허용하는 실력 차 — 기다릴수록 넓어진다 */
+  /**
+   * 지금 허용하는 실력 차 — 기다릴수록 넓어진다.
+   * MMR 자체는 내보내지 않고, 얼마나 넓혀 찾고 있는지만 알린다.
+   */
   band: number;
 }
 

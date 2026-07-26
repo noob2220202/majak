@@ -55,9 +55,14 @@ export interface RewardsView {
 export const RANK_TIERS = ['유생', '진사', '급제', '장원'] as const;
 export type RankTier = (typeof RANK_TIERS)[number];
 
+/**
+ * 겉으로 보이는 등급 (§3.2).
+ *
+ * 안쪽에는 MMR 하나만 있고 티어는 그 구간을 이름으로 옮긴 것이다.
+ * **MMR 수치 자체는 어떤 페이로드에도 싣지 않는다** — 매칭과 등락에만 쓰는 값이라
+ * 화면에 내보내면 사람들이 티어 대신 숫자를 보게 된다.
+ */
 export interface RankView {
-  /** 누적 등급 점수 (오르기만 한다 — 이건 성취 표시다) */
-  points: number;
   tier: RankTier;
   /**
    * 등급 안 급수. 9급에서 시작해 1급으로 **내려간다** (바둑·태권도와 같은 방향).
@@ -68,15 +73,8 @@ export interface RankView {
   dan: number | null;
   /** 화면에 그대로 쓰는 표기 — "진사 4급", "장원 2단" */
   label: string;
-  /** 다음 단계(급·단·승단)까지 필요한 점수. 최고 단계면 null */
-  toNext: number | null;
   games: number;
-  /**
-   * 실력 점수 (§3.2 레이팅 매칭). 등급 점수와 달리 **내려가기도 한다** —
-   * 비슷한 실력끼리 붙이는 데 쓰는 값이라 실제 실력을 따라가야 한다.
-   */
-  rating: number;
-  /** 배치 대국 남은 수. 이 동안은 실력 점수가 크게 움직인다 (0이면 배치 완료) */
+  /** 배치 대국 남은 수. 이 동안은 등락이 크다 (0이면 배치 완료) */
   placementLeft: number;
 }
 

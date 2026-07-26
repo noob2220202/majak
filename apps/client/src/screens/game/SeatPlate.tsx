@@ -1,3 +1,4 @@
+import { TierBadge } from '../../components/TierBadge';
 import type { SeatProfileView } from '@cheongiwa/protocol';
 import type { SeatView } from '../../store/game';
 import { SEAT_WIND_LABEL, seatWind } from './geometry';
@@ -40,12 +41,9 @@ export function SeatPlate({
           <span className="text-xs text-dan-red">끊김</span>
         )}
       </div>
-      {profile?.rankLabel && (
-        <div
-          className="mt-0.5 text-[10px] font-semibold tracking-wider text-gold/75"
-          style={{ fontFamily: 'var(--font-serif-kr)' }}
-        >
-          {profile.rankLabel}
+      {profile?.tier && profile.rankLabel && (
+        <div className="mt-0.5 text-[10px] font-semibold tracking-wider text-gold/75">
+          <TierBadge tier={profile.tier} label={profile.rankLabel} size={12} />
         </div>
       )}
       <div className="mt-0.5 flex items-center justify-center gap-2">

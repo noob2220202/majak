@@ -468,6 +468,90 @@ const logos = [
   },
 ];
 
+/**
+ * 등급 배지 (§3.2). 겉으로 보이는 것은 티어뿐이므로, 네 단계가 한눈에 구분되도록
+ * **재질과 형태를 다르게** 간다 — 색만 바꾸면 24px에서 서로 안 구별된다.
+ */
+const tierBadges = [
+  {
+    id: 'badge-tier-yusaeng',
+    label: '유생 배지',
+    material: 'plain unpainted paulownia wood, a simple round wooden tag with a single carved line border',
+  },
+  {
+    id: 'badge-tier-jinsa',
+    label: '진사 배지',
+    material: 'aged bronze, an octagonal medal with a small carved plum blossom in the center',
+  },
+  {
+    id: 'badge-tier-geupje',
+    label: '급제 배지',
+    material: 'deep indigo lacquer with fine gold inlay, a shield shape with a crane in flight',
+  },
+  {
+    id: 'badge-tier-jangwon',
+    label: '장원 배지',
+    material:
+      'polished gold with red silk cord tassels, an ornate flower-shaped medal with a stylised sun disc',
+  },
+].map((t) => ({
+  id: t.id,
+  file: `${t.id}.png`,
+  group: '등급 배지',
+  stage: 5,
+  gen: '1024x1024',
+  out: [128, 128],
+  alpha: true,
+  format: 'png',
+  prompt: `a small Korean rank badge insignia, ${t.material}, front view, perfectly centered, ${STYLE_OBJECT}, transparent background`,
+}));
+
+/** 계정·등급 화면에서 새로 쓰는 아이콘 */
+const extraIcons = [
+  {
+    id: 'icon-account',
+    label: '계정',
+    subject:
+      'a Korean traditional name tag (호패), a small carved wooden plaque with a hole and a knotted cord at the top',
+  },
+  {
+    id: 'icon-recovery-key',
+    label: '복구 코드',
+    subject: 'an old Korean brass padlock key with a lotus-shaped bow, lying flat',
+  },
+  {
+    id: 'icon-rank',
+    label: '등급',
+    subject:
+      'a small stack of three Korean examination scrolls tied with a red cord, one standing upright',
+  },
+].map((i) => ({
+  id: i.id,
+  file: `${i.id}.png`,
+  group: '아이콘',
+  stage: 5,
+  gen: '1024x1024',
+  out: [96, 96],
+  alpha: true,
+  format: 'png',
+  prompt: `a single game UI icon, ${i.subject}, ${STYLE_OBJECT}, transparent background`,
+}));
+
+/** 남은 로고 — 워드마크는 파비콘·헤더에 쓴다 */
+const extraLogos = [
+  {
+    id: 'logo-wordmark',
+    file: 'logo-wordmark.png',
+    group: '로고',
+    stage: 5,
+    gen: '1536x1024',
+    out: [512, 341],
+    alpha: true,
+    format: 'png',
+    prompt: `a horizontal game logo lockup: a small circular giwa roof medallion on the left and a blank engraved wooden signboard panel on the right where a title will be typeset, gold and deep indigo, ${STYLE_OBJECT}, transparent background`,
+  },
+];
+
 export const MANIFEST = [
   ...backgrounds,
   ...characters,
@@ -478,4 +562,7 @@ export const MANIFEST = [
   ...fx,
   ...emotes,
   ...logos,
+  ...tierBadges,
+  ...extraIcons,
+  ...extraLogos,
 ];

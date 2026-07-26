@@ -4,6 +4,7 @@ import type { GameEndView } from '@cheongiwa/protocol';
 import { useGame, type LocalGame } from '../../store/game';
 import { Button } from '../../components/ui';
 import { Yeopjeon } from '../../motifs/Motifs';
+import { TierBadge } from '../../components/TierBadge';
 
 const RANK_LABEL = ['1위', '2위', '3위', '4위'];
 const END_REASON: Record<string, string> = {
@@ -120,8 +121,8 @@ export function GameEndOverlay({
             <p className="mt-1.5 border-t border-gold/20 pt-1.5 text-[11px] text-hanji/50">
               잔액 {rewards.balance.toLocaleString()}냥
               {rank && (
-                <span className="ml-2 text-gold/70" style={{ fontFamily: 'var(--font-serif-kr)' }}>
-                  {rank.label}
+                <span className="ml-2 text-gold/70">
+                  <TierBadge tier={rank.tier} label={rank.label} size={13} />
                 </span>
               )}
             </p>

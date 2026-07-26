@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_RULES, type GameState, type RuleSettings, type Seat } from '@cheongiwa/engine';
 import { openDatabase, type AppDatabase } from '../src/db';
 import { grantGameRewards, grantReliefIfNeeded, recentLedger, REWARD } from '../src/economy';
-import { applyGameRatings, PLACEMENT_GAMES, rankOf, rankViewOf, ratingDelta } from '../src/ranks';
+import {
+  applyGameRatings,
+  INITIAL_RATING,
+  mmrOf,
+  PLACEMENT_GAMES,
+  rankOf,
+  rankViewOf,
+  ratingDelta,
+} from '../src/ranks';
 import { buyItem, CATALOG, equipItem, walletView } from '../src/shop';
 import type { SessionEndSummary } from '../src/session';
 
@@ -264,24 +272,24 @@ describe('저잣거리 상점 (§6.3)', () => {
   });
 });
 
-describe('등급·레이팅 (§7 Phase 5)', () => {
-  it('첫 대국 전에는 유생 1단·0점이다', () => {
+describe('등급 (§3.2)', () => {
+  it('첫 대국 전에는 유생 5급에서 시작한다', () => {
     const rank = rankOf(db, 'u1');
     expect(rank.tier).toBe('유생');
-    expect(rank.points).toBe(0);
+    expect(rank.grade).toBe(5);
     expect(rank.games).toBe(0);
   });
 
-  it('순위대로 점수가 오르내리고 0점 아래로는 내려가지 않는다', () => {
-    const ranks = applyGameRatings(db, makeSummary(), NOON);
-    expect(ranks.get('u1')?.points).toBe(60); // 유생 1위
-    expect(ranks.get('u2')?.points).toBe(25);
-    expect(ranks.get('u3')?.points).toBe(0);
-    expect(ranks.get('u4')?.points).toBe(0); // -15이지만 하한 0
-    expect(ranks.get('u1')?.games).toBe(1);
+  it('순위대로 MMR 이 오르내린다', () => {
+    applyGameRatings(db, makeSummary(), NOON);
+    expect(mmrOf(db, 'u1')).toBeGreaterThan(INITIAL_RATING); // 1위
+    expect(mmrOf(db, 'u2')).toBeGreaterThan(INITIAL_RATING); // 2위
+    expect(mmrOf(db, 'u3')).toBeLessThan(INITIAL_RATING);
+    expect(mmrOf(db, 'u4')).toBeLessThan(INITIAL_RATING); // 4위
+    expect(rankOf(db, 'u1').games).toBe(1);
   });
 
-  it('같은 대국을 두 번 반영해도 점수는 한 번만 움직인다 (멱등)', () => {
+  it('같은 대국을 두 번 반영해도 한 번만 움직인다 (멱등)', () => {
     applyGameRatings(db, makeSummary(), NOON);
     const after = rankOf(db, 'u1');
 
@@ -290,9 +298,11 @@ describe('등급·레이팅 (§7 Phase 5)', () => {
     expect(rankOf(db, 'u1')).toEqual(after);
   });
 
-  it('동풍전은 증감이 절반이다', () => {
-    const ranks = applyGameRatings(db, makeSummary({ gameLength: 'tonpuu' }), NOON);
-    expect(ranks.get('u1')?.points).toBe(30);
+  it('동풍전은 증감이 작다', () => {
+    applyGameRatings(db, makeSummary({ gameLength: 'tonpuu' }), NOON);
+    const gain = mmrOf(db, 'u1') - INITIAL_RATING;
+    expect(gain).toBeGreaterThan(0);
+    expect(gain).toBeLessThan(30); // 같은 조건 반장전이면 30
   });
 
   it('연습·봇 대국은 레이팅에 반영하지 않는다', () => {
@@ -300,32 +310,42 @@ describe('등급·레이팅 (§7 Phase 5)', () => {
     expect(
       applyGameRatings(db, makeSummary({ users: ['u1', null, null, null] }), NOON).size,
     ).toBe(0);
-    expect(rankOf(db, 'u1').points).toBe(0);
+    expect(mmrOf(db, 'u1')).toBe(INITIAL_RATING);
   });
 
-  it('점수 구간마다 급수·단이 올바르게 매겨진다', () => {
+  it('MMR 구간마다 급수·단이 올바르게 매겨진다', () => {
     // 유생~급제는 9급에서 1급으로 내려가고, 장원만 단으로 올라간다
-    expect(rankViewOf(0, 1, 1500)).toMatchObject({ tier: '유생', grade: 9, label: '유생 9급' });
-    expect(rankViewOf(850, 1, 1500)).toMatchObject({ tier: '유생', grade: 1, label: '유생 1급' });
-    expect(rankViewOf(900, 1, 1500)).toMatchObject({ tier: '진사', grade: 9, label: '진사 9급' });
-    expect(rankViewOf(2250, 1, 1500)).toMatchObject({ tier: '급제', grade: 9 });
-    expect(rankViewOf(4050, 1, 1500)).toMatchObject({
+    expect(rankViewOf(1260, 1)).toMatchObject({ tier: '유생', grade: 9, label: '유생 9급' });
+    expect(rankViewOf(INITIAL_RATING, 1)).toMatchObject({ tier: '유생', grade: 5 });
+    expect(rankViewOf(1740, 1)).toMatchObject({ tier: '유생', grade: 1 });
+    expect(rankViewOf(1800, 1)).toMatchObject({ tier: '진사', grade: 9, label: '진사 9급' });
+    expect(rankViewOf(2340, 1)).toMatchObject({ tier: '급제', grade: 9 });
+    expect(rankViewOf(2880, 1)).toMatchObject({
       tier: '장원',
       grade: null,
       dan: 1,
       label: '장원 1단',
     });
-    // 최고 단계에 닿으면 더 올릴 곳이 없다
-    expect(rankViewOf(99999, 1, 1500)).toMatchObject({ tier: '장원', dan: 9, toNext: null });
+    expect(rankViewOf(99999, 1)).toMatchObject({ tier: '장원', dan: 9 });
+    // 바닥 밑으로 떨어져도 표기는 유생 9급에서 멈춘다
+    expect(rankViewOf(0, 1)).toMatchObject({ tier: '유생', grade: 9 });
   });
 
-  it('toNext 는 다음 단계까지 남은 점수다', () => {
-    expect(rankViewOf(0, 1, 1500).toNext).toBe(100); // 유생 9급 → 8급
-    expect(rankViewOf(850, 1, 1500).toNext).toBe(50); // 유생 1급 → 진사 승단
+  it('겉으로는 MMR 수치를 내보내지 않는다', () => {
+    const view = rankViewOf(1832.4, 7);
+    expect(Object.keys(view).sort()).toEqual(
+      ['dan', 'games', 'grade', 'label', 'placementLeft', 'tier'].sort(),
+    );
+    expect(JSON.stringify(view)).not.toContain('1832');
+  });
+
+  it('MMR 이 내려가면 급수도 따라 내려간다 (강등 있음)', () => {
+    expect(rankViewOf(1810, 1).label).toBe('진사 9급');
+    expect(rankViewOf(1790, 1).label).toBe('유생 1급');
   });
 });
 
-describe('실력 점수 (§3.2 레이팅 매칭)', () => {
+describe('MMR (§3.2 레이팅 매칭)', () => {
   it('같은 실력끼리면 순위점이 그대로 반영된다 (배치 구간)', () => {
     const same = { rating: 1500, opponentAvg: 1500, games: 0, hanchan: true };
     expect(ratingDelta({ ...same, rank: 1 })).toBe(30);
@@ -364,14 +384,10 @@ describe('실력 점수 (§3.2 레이팅 매칭)', () => {
 
   it('대국 결과가 실력 점수에 반영되고 처리 순서에 좌우되지 않는다', () => {
     // u1 만 세게 만들어 둔다 — 사람마다 상대 평균이 달라지게 한다
-    db.prepare(
-      'INSERT INTO ratings (user_id, points, games, rating) VALUES (?, 0, 0, 2000)',
-    ).run('u1');
+    db.prepare('INSERT INTO ratings (user_id, games, rating) VALUES (?, 0, 2000)').run('u1');
 
     applyGameRatings(db, makeSummary(), NOON);
-    const after = (id: string): number =>
-      (db.prepare('SELECT rating FROM ratings WHERE user_id = ?').get(id) as { rating: number })
-        .rating;
+    const after = (id: string): number => mmrOf(db, id);
 
     // 1위 u1 은 올랐고, 4위 u4 는 깎였다
     expect(after('u1')).toBeGreaterThan(2000);
@@ -390,11 +406,11 @@ describe('실력 점수 (§3.2 레이팅 매칭)', () => {
     expect(after('u2')).toBeCloseTo(expectedU2, 5);
   });
 
-  it('같은 대국을 두 번 정산해도 실력 점수는 한 번만 움직인다', () => {
+  it('같은 대국을 두 번 정산해도 MMR 은 한 번만 움직인다', () => {
     applyGameRatings(db, makeSummary(), NOON);
-    const once = rankOf(db, 'u1').rating;
+    const once = mmrOf(db, 'u1');
     applyGameRatings(db, makeSummary(), NOON);
-    expect(rankOf(db, 'u1').rating).toBe(once);
+    expect(mmrOf(db, 'u1')).toBe(once);
   });
 
   it('배치 대국 남은 수를 알려 준다', () => {

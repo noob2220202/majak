@@ -37,7 +37,7 @@ import { authenticate, statsOf } from './auth';
 import { openDatabase, type AppDatabase } from './db';
 import { grantGameRewards, grantReliefIfNeeded } from './economy';
 import { DEFAULT_MATCHMAKING, Matchmaking, type MatchmakingOptions } from './matchmaking';
-import { applyGameRatings, rankOf } from './ranks';
+import { applyGameRatings, mmrOf, rankOf } from './ranks';
 import { persistGame } from './records';
 import { RoomManager } from './rooms';
 import { buyItem, CATALOG, equipItem, walletView } from './shop';
@@ -387,8 +387,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
         return;
       }
       rooms.leave(userId);
-      // 실력 점수를 함께 실어 비슷한 사람끼리 붙인다 (§3.2 레이팅 매칭)
-      matchmaking.enqueue(userId, data.nickname, socket, rankOf(db, userId).rating);
+      // MMR 을 함께 실어 비슷한 사람끼리 붙인다. 이 값은 큐 안에서만 쓰이고
+      // 클라로는 나가지 않는다 (§3.2)
+      matchmaking.enqueue(userId, data.nickname, socket, mmrOf(db, userId));
     });
 
     on('lobby.cancel', null, () => {

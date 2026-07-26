@@ -16,8 +16,9 @@ export function openDatabase(dbPath: string): AppDatabase {
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
-  // 옛 스키마(users.token_hash)를 먼저 걷어내야 아래 CREATE 들과 모양이 맞는다
+  // 옛 스키마를 먼저 걷어내야 아래 CREATE 들과 모양이 맞는다
   upgradeLegacyUsers(db);
+  upgradeLegacyRatings(db);
   migrate(db);
   return db;
 }
@@ -77,6 +78,49 @@ function upgradeLegacyUsers(db: AppDatabase): void {
   if (broken.length > 0) {
     throw new Error(`계정 마이그레이션 후 외래키 위반 ${broken.length}건`);
   }
+}
+
+/**
+ * 등급을 티어 + MMR 하나로 단일화하기 전 DB 승격.
+ *
+ * 예전에는 오르기만 하는 등급 점수(points)와 매칭용 실력 점수(rating)를 따로 뒀는데,
+ * 겉으로 보이는 것을 티어 하나로 줄이면서 points 는 쓸 곳이 없어졌다. SQLite 는
+ * 칸을 지우려면 표를 다시 만들어야 하므로 rating·games 만 옮겨 담는다.
+ */
+function upgradeLegacyRatings(db: AppDatabase): void {
+  const cols = db.pragma('table_info(ratings)') as Array<{ name: string }>;
+  if (cols.length === 0 || !cols.some((c) => c.name === 'points')) return;
+  const hadRating = cols.some((c) => c.name === 'rating');
+
+  db.pragma('foreign_keys = OFF');
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE ratings_v1 (
+        user_id TEXT PRIMARY KEY REFERENCES users(id),
+        games INTEGER NOT NULL DEFAULT 0,
+        rating REAL NOT NULL DEFAULT 1500
+      );
+      INSERT INTO ratings_v1 (user_id, games, rating)
+        SELECT user_id, games, ${hadRating ? 'rating' : '1500'} FROM ratings;
+      DROP TABLE ratings;
+      ALTER TABLE ratings_v1 RENAME TO ratings;
+
+      -- 이력은 등급 점수 기준이라 더 못 읽는다. 멱등 키(user_id, game_id)만 남긴다.
+      CREATE TABLE rating_log_v1 (
+        user_id TEXT NOT NULL REFERENCES users(id),
+        game_id TEXT NOT NULL,
+        delta REAL NOT NULL,
+        rating_after REAL NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, game_id)
+      );
+      INSERT INTO rating_log_v1 (user_id, game_id, delta, rating_after, created_at)
+        SELECT user_id, game_id, 0, 1500, created_at FROM rating_log;
+      DROP TABLE rating_log;
+      ALTER TABLE rating_log_v1 RENAME TO rating_log;
+    `);
+  })();
+  db.pragma('foreign_keys = ON');
 }
 
 function migrate(db: AppDatabase): void {
@@ -166,11 +210,10 @@ function migrate(db: AppDatabase): void {
       PRIMARY KEY (user_id, slot)
     );
 
-    -- 등급·실력 점수 (Phase 5): 유생 → 진사 → 급제 → 장원
-    -- points 는 오르기만 하는 성취 표시, rating 은 매칭에 쓰는 실력 점수라 오르내린다
+    -- 등급 (§3.2): 안쪽 숫자는 MMR 하나뿐이고 티어·급수는 그 구간의 이름이다.
+    -- MMR 은 서버 밖으로 나가지 않는다 — 매칭과 등락 계산에만 쓴다.
     CREATE TABLE IF NOT EXISTS ratings (
       user_id TEXT PRIMARY KEY REFERENCES users(id),
-      points INTEGER NOT NULL DEFAULT 0,
       games INTEGER NOT NULL DEFAULT 0,
       rating REAL NOT NULL DEFAULT 1500
     );
@@ -179,10 +222,8 @@ function migrate(db: AppDatabase): void {
     CREATE TABLE IF NOT EXISTS rating_log (
       user_id TEXT NOT NULL REFERENCES users(id),
       game_id TEXT NOT NULL,
-      delta INTEGER NOT NULL,
-      points_after INTEGER NOT NULL,
-      rating_delta REAL,
-      rating_after REAL,
+      delta REAL NOT NULL,
+      rating_after REAL NOT NULL,
       created_at INTEGER NOT NULL,
       PRIMARY KEY (user_id, game_id)
     );
@@ -192,24 +233,5 @@ function migrate(db: AppDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_ledger_user_game ON ledger(user_id, game_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   `);
-  addColumns(db);
-}
-
-/**
- * 뒤늦게 붙인 칸들. `CREATE TABLE IF NOT EXISTS` 는 이미 있는 표를 건드리지 않으므로
- * 기존 DB에는 ALTER 로 따로 넣어 준다 (있으면 조용히 넘어간다).
- */
-function addColumns(db: AppDatabase): void {
-  const later: Array<[string, string, string]> = [
-    // 실력 점수 (§3.2 레이팅 매칭) — 등급 점수와 달리 오르내린다
-    ['ratings', 'rating', 'REAL NOT NULL DEFAULT 1500'],
-    ['rating_log', 'rating_delta', 'REAL'],
-    ['rating_log', 'rating_after', 'REAL'],
-  ];
-  for (const [table, column, decl] of later) {
-    const cols = db.pragma(`table_info(${table})`) as Array<{ name: string }>;
-    if (cols.some((c) => c.name === column)) continue;
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
-  }
 }
 

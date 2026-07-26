@@ -194,16 +194,16 @@ describe('실력대 묶기', () => {
 });
 
 describe('대기 상태', () => {
-  it('내 실력과 지금 허용 폭을 실어 보낸다', () => {
+  it('허용 폭만 실어 보내고 MMR 수치는 내보내지 않는다', () => {
     mm = make({ fillOfferAfterMs: 10 * 60_000 });
     mm.begin();
     join('a', 1732.5);
 
-    expect(queueState('a')).toMatchObject({
-      inQueue: true,
-      rating: 1732.5,
-      band: DEFAULT_MATCHMAKING.ratingBand,
-    });
+    const state = queueState('a');
+    expect(state).toMatchObject({ inQueue: true, band: DEFAULT_MATCHMAKING.ratingBand });
+    // MMR 은 매칭에만 쓰는 값이라 대기 상태에 실리면 안 된다
+    expect(JSON.stringify(state)).not.toContain('1732');
+    expect(Object.keys(state ?? {})).not.toContain('rating');
 
     vi.advanceTimersByTime(30_000);
     // 20/초 × 30초 = 600 만큼 넓어진다

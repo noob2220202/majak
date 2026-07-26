@@ -8,6 +8,7 @@ import { AuthCard } from './AuthCard';
 import { Scene } from './Scene';
 import { Plaque } from '../components/Plaque';
 import { ArtIconButton } from '../components/art';
+import { TierBadge } from '../components/TierBadge';
 import { Yeopjeon } from '../motifs/Motifs';
 
 /** 로비에 세울 수 있는 캐릭터. 클릭하면 다음 사람으로 넘어간다 (표시 전용) */
@@ -27,12 +28,16 @@ function WalletBar() {
   return (
     <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
       {rank && (
-        <span
-          className="rounded-lg bg-ink/60 px-3 py-1.5 text-sm font-semibold text-gold ring-1 ring-gold/25"
-          style={{ fontFamily: 'var(--font-serif-kr)' }}
-          title={`실력 ${rank.rating}${rank.toNext !== null ? ` · 다음 단계까지 ${rank.toNext}점` : ' · 최고 단계'}`}
-        >
-          {rank.label}
+        <span className="rounded-lg bg-ink/60 px-3 py-1.5 text-sm font-semibold text-gold ring-1 ring-gold/25">
+          <TierBadge
+            tier={rank.tier}
+            label={rank.label}
+            title={
+              rank.placementLeft > 0
+                ? `배치 대국 ${rank.placementLeft}국 남음 — 이 동안은 등급이 크게 움직입니다`
+                : `${rank.games}국`
+            }
+          />
         </span>
       )}
       <span className="flex items-center gap-1.5 rounded-lg bg-ink/60 py-1.5 pl-2 pr-3 text-sm font-bold tabular-nums text-gold-hi ring-1 ring-gold/25">
@@ -109,9 +114,14 @@ function MainMenu() {
         <p className="mt-1 text-sm text-hanji/60">
           {Math.floor(queue.waitingMs / 1000)}초 경과 · 대기 {queue.position}번째
         </p>
-        {/* 실력대를 좁게 잡고 시작해 기다릴수록 넓힌다 — 왜 기다리는지 보이게 한다 (§3.2) */}
-        <p className="mt-1 text-xs text-hanji/45 tabular-nums">
-          실력 {queue.rating} · ±{queue.band} 안에서 찾는 중
+        {/* 실력대를 좁게 잡고 시작해 기다릴수록 넓힌다. MMR 수치는 보여 주지 않고
+            "지금 얼마나 넓혀 찾고 있는지"만 알린다 (§3.2) */}
+        <p className="mt-1 text-xs text-hanji/45">
+          {queue.band < 600
+            ? '비슷한 실력대에서 찾는 중'
+            : queue.band < 1600
+              ? '범위를 넓혀 찾는 중'
+              : '실력대를 크게 열고 찾는 중'}
         </p>
         {fillOffer && (
           <div className="mt-4 rounded-lg bg-dan-orange/20 p-3 ring-1 ring-dan-orange/40">

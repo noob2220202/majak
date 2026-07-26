@@ -127,8 +127,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
       return {
         ...s,
         profile: {
+          // 전적이 없으면 등급을 붙이지 않는다 (첫 대국부터 '유생 9급'이 붙으면 낙인이 된다)
           tier: rank.games > 0 ? rank.tier : null,
-          level: rank.level,
+          rankLabel: rank.games > 0 ? rank.label : null,
           tileBack: loadout.tileBack,
           winEffect: loadout.winEffect,
         },
@@ -386,7 +387,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
         return;
       }
       rooms.leave(userId);
-      matchmaking.enqueue(userId, data.nickname, socket);
+      // 실력 점수를 함께 실어 비슷한 사람끼리 붙인다 (§3.2 레이팅 매칭)
+      matchmaking.enqueue(userId, data.nickname, socket, rankOf(db, userId).rating);
     });
 
     on('lobby.cancel', null, () => {

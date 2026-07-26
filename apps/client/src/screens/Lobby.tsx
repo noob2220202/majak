@@ -30,10 +30,9 @@ function WalletBar() {
         <span
           className="rounded-lg bg-ink/60 px-3 py-1.5 text-sm font-semibold text-gold ring-1 ring-gold/25"
           style={{ fontFamily: 'var(--font-serif-kr)' }}
-          title={rank.toNext !== null ? `승단까지 ${rank.toNext}점` : '최고 등급'}
+          title={`실력 ${rank.rating}${rank.toNext !== null ? ` · 다음 단계까지 ${rank.toNext}점` : ' · 최고 단계'}`}
         >
-          {rank.tier}
-          {rank.level > 0 && ` ${rank.level}`}
+          {rank.label}
         </span>
       )}
       <span className="flex items-center gap-1.5 rounded-lg bg-ink/60 py-1.5 pl-2 pr-3 text-sm font-bold tabular-nums text-gold-hi ring-1 ring-gold/25">
@@ -109,6 +108,10 @@ function MainMenu() {
         <p className="text-lg font-semibold text-hanji">빠른 대전 대기 중…</p>
         <p className="mt-1 text-sm text-hanji/60">
           {Math.floor(queue.waitingMs / 1000)}초 경과 · 대기 {queue.position}번째
+        </p>
+        {/* 실력대를 좁게 잡고 시작해 기다릴수록 넓힌다 — 왜 기다리는지 보이게 한다 (§3.2) */}
+        <p className="mt-1 text-xs text-hanji/45 tabular-nums">
+          실력 {queue.rating} · ±{queue.band} 안에서 찾는 중
         </p>
         {fillOffer && (
           <div className="mt-4 rounded-lg bg-dan-orange/20 p-3 ring-1 ring-dan-orange/40">

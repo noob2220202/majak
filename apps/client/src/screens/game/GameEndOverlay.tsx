@@ -121,8 +121,7 @@ export function GameEndOverlay({
               잔액 {rewards.balance.toLocaleString()}냥
               {rank && (
                 <span className="ml-2 text-gold/70" style={{ fontFamily: 'var(--font-serif-kr)' }}>
-                  {rank.tier}
-                  {rank.level > 0 && ` ${rank.level}`}
+                  {rank.label}
                 </span>
               )}
             </p>

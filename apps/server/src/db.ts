@@ -166,19 +166,23 @@ function migrate(db: AppDatabase): void {
       PRIMARY KEY (user_id, slot)
     );
 
-    -- 등급·레이팅 (Phase 5): 유생 → 진사 → 급제 → 장원
+    -- 등급·실력 점수 (Phase 5): 유생 → 진사 → 급제 → 장원
+    -- points 는 오르기만 하는 성취 표시, rating 은 매칭에 쓰는 실력 점수라 오르내린다
     CREATE TABLE IF NOT EXISTS ratings (
       user_id TEXT PRIMARY KEY REFERENCES users(id),
       points INTEGER NOT NULL DEFAULT 0,
-      games INTEGER NOT NULL DEFAULT 0
+      games INTEGER NOT NULL DEFAULT 0,
+      rating REAL NOT NULL DEFAULT 1500
     );
 
-    -- 레이팅 반영 이력 (gameId 기준 멱등 키)
+    -- 반영 이력 (gameId 기준 멱등 키)
     CREATE TABLE IF NOT EXISTS rating_log (
       user_id TEXT NOT NULL REFERENCES users(id),
       game_id TEXT NOT NULL,
       delta INTEGER NOT NULL,
       points_after INTEGER NOT NULL,
+      rating_delta REAL,
+      rating_after REAL,
       created_at INTEGER NOT NULL,
       PRIMARY KEY (user_id, game_id)
     );
@@ -188,5 +192,24 @@ function migrate(db: AppDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_ledger_user_game ON ledger(user_id, game_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   `);
+  addColumns(db);
+}
+
+/**
+ * 뒤늦게 붙인 칸들. `CREATE TABLE IF NOT EXISTS` 는 이미 있는 표를 건드리지 않으므로
+ * 기존 DB에는 ALTER 로 따로 넣어 준다 (있으면 조용히 넘어간다).
+ */
+function addColumns(db: AppDatabase): void {
+  const later: Array<[string, string, string]> = [
+    // 실력 점수 (§3.2 레이팅 매칭) — 등급 점수와 달리 오르내린다
+    ['ratings', 'rating', 'REAL NOT NULL DEFAULT 1500'],
+    ['rating_log', 'rating_delta', 'REAL'],
+    ['rating_log', 'rating_after', 'REAL'],
+  ];
+  for (const [table, column, decl] of later) {
+    const cols = db.pragma(`table_info(${table})`) as Array<{ name: string }>;
+    if (cols.some((c) => c.name === column)) continue;
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
+  }
 }
 

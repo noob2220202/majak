@@ -79,7 +79,7 @@ const EMOTE_COOLDOWN_MS = 3000;
 /** 프로필이 없는 좌석(봇 등)의 기본 표시값 */
 const DEFAULT_PROFILE: Omit<SeatProfileView, 'seat'> = {
   tier: null,
-  level: 0,
+  rankLabel: null,
   tileBack: 'tileBack.sumaksae',
   winEffect: 'winEffect.basic',
 };

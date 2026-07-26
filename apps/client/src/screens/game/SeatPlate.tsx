@@ -40,13 +40,12 @@ export function SeatPlate({
           <span className="text-xs text-dan-red">끊김</span>
         )}
       </div>
-      {profile?.tier && (
+      {profile?.rankLabel && (
         <div
           className="mt-0.5 text-[10px] font-semibold tracking-wider text-gold/75"
           style={{ fontFamily: 'var(--font-serif-kr)' }}
         >
-          {profile.tier}
-          {profile.level > 0 && ` ${profile.level}`}
+          {profile.rankLabel}
         </div>
       )}
       <div className="mt-0.5 flex items-center justify-center gap-2">

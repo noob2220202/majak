@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_RULES, type GameState, type RuleSettings, type Seat } from '@cheongiwa/engine';
 import { openDatabase, type AppDatabase } from '../src/db';
 import { grantGameRewards, grantReliefIfNeeded, recentLedger, REWARD } from '../src/economy';
-import { applyGameRatings, rankOf, rankViewOf } from '../src/ranks';
+import { applyGameRatings, PLACEMENT_GAMES, rankOf, rankViewOf, ratingDelta } from '../src/ranks';
 import { buyItem, CATALOG, equipItem, walletView } from '../src/shop';
 import type { SessionEndSummary } from '../src/session';
 
@@ -303,13 +303,103 @@ describe('등급·레이팅 (§7 Phase 5)', () => {
     expect(rankOf(db, 'u1').points).toBe(0);
   });
 
-  it('점수 구간마다 등급·단계가 올바르게 매겨진다', () => {
-    expect(rankViewOf(0, 1)).toMatchObject({ tier: '유생', level: 1, toNext: 900 });
-    expect(rankViewOf(600, 1)).toMatchObject({ tier: '유생', level: 3 });
-    expect(rankViewOf(900, 1)).toMatchObject({ tier: '진사', level: 1, toNext: 1200 });
-    expect(rankViewOf(2100, 1)).toMatchObject({ tier: '급제', level: 1 });
-    expect(rankViewOf(3600, 1)).toMatchObject({ tier: '장원', level: 1, toNext: null });
-    // 최고 등급은 단계가 1로 고정된다
-    expect(rankViewOf(9999, 1)).toMatchObject({ tier: '장원', level: 1 });
+  it('점수 구간마다 급수·단이 올바르게 매겨진다', () => {
+    // 유생~급제는 9급에서 1급으로 내려가고, 장원만 단으로 올라간다
+    expect(rankViewOf(0, 1, 1500)).toMatchObject({ tier: '유생', grade: 9, label: '유생 9급' });
+    expect(rankViewOf(850, 1, 1500)).toMatchObject({ tier: '유생', grade: 1, label: '유생 1급' });
+    expect(rankViewOf(900, 1, 1500)).toMatchObject({ tier: '진사', grade: 9, label: '진사 9급' });
+    expect(rankViewOf(2250, 1, 1500)).toMatchObject({ tier: '급제', grade: 9 });
+    expect(rankViewOf(4050, 1, 1500)).toMatchObject({
+      tier: '장원',
+      grade: null,
+      dan: 1,
+      label: '장원 1단',
+    });
+    // 최고 단계에 닿으면 더 올릴 곳이 없다
+    expect(rankViewOf(99999, 1, 1500)).toMatchObject({ tier: '장원', dan: 9, toNext: null });
+  });
+
+  it('toNext 는 다음 단계까지 남은 점수다', () => {
+    expect(rankViewOf(0, 1, 1500).toNext).toBe(100); // 유생 9급 → 8급
+    expect(rankViewOf(850, 1, 1500).toNext).toBe(50); // 유생 1급 → 진사 승단
+  });
+});
+
+describe('실력 점수 (§3.2 레이팅 매칭)', () => {
+  it('같은 실력끼리면 순위점이 그대로 반영된다 (배치 구간)', () => {
+    const same = { rating: 1500, opponentAvg: 1500, games: 0, hanchan: true };
+    expect(ratingDelta({ ...same, rank: 1 })).toBe(30);
+    expect(ratingDelta({ ...same, rank: 2 })).toBe(10);
+    expect(ratingDelta({ ...same, rank: 3 })).toBe(-10);
+    expect(ratingDelta({ ...same, rank: 4 })).toBe(-30);
+  });
+
+  it('센 상대들 사이에서 이기면 더 오르고, 약한 상대들 사이에서 지면 더 깎인다', () => {
+    const base = { rating: 1500, games: 0, hanchan: true };
+    const vsStrong = ratingDelta({ ...base, opponentAvg: 1900, rank: 1 });
+    const vsEqual = ratingDelta({ ...base, opponentAvg: 1500, rank: 1 });
+    expect(vsStrong).toBeGreaterThan(vsEqual);
+
+    const lostToWeak = ratingDelta({ ...base, opponentAvg: 1100, rank: 4 });
+    const lostToEqual = ratingDelta({ ...base, opponentAvg: 1500, rank: 4 });
+    expect(lostToWeak).toBeLessThan(lostToEqual);
+  });
+
+  it('대국 수가 쌓일수록 변동 폭이 줄어 실력에 수렴한다', () => {
+    const at = (games: number): number =>
+      ratingDelta({ rating: 1500, opponentAvg: 1500, rank: 1, games, hanchan: true });
+    expect(at(0)).toBeGreaterThan(at(100));
+    expect(at(100)).toBeGreaterThan(at(399));
+    // 400국 이후로는 더 줄지 않는다
+    expect(at(400)).toBe(at(1000));
+    expect(at(400)).toBeCloseTo(30 * 0.2, 5);
+  });
+
+  it('동풍전은 반장전보다 덜 움직인다', () => {
+    const base = { rating: 1500, opponentAvg: 1500, rank: 1, games: 0 };
+    expect(ratingDelta({ ...base, hanchan: false })).toBeLessThan(
+      ratingDelta({ ...base, hanchan: true }),
+    );
+  });
+
+  it('대국 결과가 실력 점수에 반영되고 처리 순서에 좌우되지 않는다', () => {
+    // u1 만 세게 만들어 둔다 — 사람마다 상대 평균이 달라지게 한다
+    db.prepare(
+      'INSERT INTO ratings (user_id, points, games, rating) VALUES (?, 0, 0, 2000)',
+    ).run('u1');
+
+    applyGameRatings(db, makeSummary(), NOON);
+    const after = (id: string): number =>
+      (db.prepare('SELECT rating FROM ratings WHERE user_id = ?').get(id) as { rating: number })
+        .rating;
+
+    // 1위 u1 은 올랐고, 4위 u4 는 깎였다
+    expect(after('u1')).toBeGreaterThan(2000);
+    expect(after('u4')).toBeLessThan(1500);
+
+    // 상대 평균은 '대국 전' 점수로 계산한다 — u2(2위)의 상대 평균은 (2000+1500+1500)/3
+    const expectedU2 =
+      1500 +
+      ratingDelta({
+        rating: 1500,
+        opponentAvg: (2000 + 1500 + 1500) / 3,
+        rank: 2,
+        games: 0,
+        hanchan: true,
+      });
+    expect(after('u2')).toBeCloseTo(expectedU2, 5);
+  });
+
+  it('같은 대국을 두 번 정산해도 실력 점수는 한 번만 움직인다', () => {
+    applyGameRatings(db, makeSummary(), NOON);
+    const once = rankOf(db, 'u1').rating;
+    applyGameRatings(db, makeSummary(), NOON);
+    expect(rankOf(db, 'u1').rating).toBe(once);
+  });
+
+  it('배치 대국 남은 수를 알려 준다', () => {
+    expect(rankOf(db, 'u1').placementLeft).toBe(PLACEMENT_GAMES);
+    applyGameRatings(db, makeSummary(), NOON);
+    expect(rankOf(db, 'u1').placementLeft).toBe(PLACEMENT_GAMES - 1);
   });
 });

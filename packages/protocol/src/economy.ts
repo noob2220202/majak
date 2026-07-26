@@ -56,14 +56,28 @@ export const RANK_TIERS = ['유생', '진사', '급제', '장원'] as const;
 export type RankTier = (typeof RANK_TIERS)[number];
 
 export interface RankView {
-  /** 누적 레이팅 점수 */
+  /** 누적 등급 점수 (오르기만 한다 — 이건 성취 표시다) */
   points: number;
   tier: RankTier;
-  /** 등급 내 단계 (1~3, 장원은 1) */
-  level: number;
-  /** 다음 승단까지 필요한 점수 (최고 등급이면 null) */
+  /**
+   * 등급 안 급수. 9급에서 시작해 1급으로 **내려간다** (바둑·태권도와 같은 방향).
+   * 장원은 급 대신 단을 쓰므로 null.
+   */
+  grade: number | null;
+  /** 장원의 단. 1단에서 시작해 **올라간다**. 그 외 등급은 null */
+  dan: number | null;
+  /** 화면에 그대로 쓰는 표기 — "진사 4급", "장원 2단" */
+  label: string;
+  /** 다음 단계(급·단·승단)까지 필요한 점수. 최고 단계면 null */
   toNext: number | null;
   games: number;
+  /**
+   * 실력 점수 (§3.2 레이팅 매칭). 등급 점수와 달리 **내려가기도 한다** —
+   * 비슷한 실력끼리 붙이는 데 쓰는 값이라 실제 실력을 따라가야 한다.
+   */
+  rating: number;
+  /** 배치 대국 남은 수. 이 동안은 실력 점수가 크게 움직인다 (0이면 배치 완료) */
+  placementLeft: number;
 }
 
 // ── 클라 → 서버 요청 스키마 ────────────────────────────────────
@@ -91,7 +105,8 @@ export interface EmoteShowView {
 export interface SeatProfileView {
   seat: number;
   tier: RankTier | null;
-  level: number;
+  /** "진사 4급" 처럼 좌석 이름표에 붙는 표기 (전적이 없으면 null) */
+  rankLabel: string | null;
   /** 상대 패 뒷면 — 각자 장착한 것이 보인다 */
   tileBack: string;
   /** 화료 연출 — 그 좌석이 화료했을 때 모두에게 보인다 */

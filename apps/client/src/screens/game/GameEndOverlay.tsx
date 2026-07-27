@@ -120,12 +120,33 @@ export function GameEndOverlay({
             </ul>
             <p className="mt-1.5 border-t border-gold/20 pt-1.5 text-[11px] text-hanji/50">
               잔액 {rewards.balance.toLocaleString()}냥
-              {rank && (
-                <span className="ml-2 text-gold/70">
-                  <TierBadge tier={rank.tier} label={rank.label} size={13} />
-                </span>
-              )}
             </p>
+          </motion.div>
+        )}
+
+        {/* 등급은 잔액 옆 각주로 두기엔 아깝다 — 한 판 끝나고 가장 궁금한 값이다 */}
+        {rank && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 + end.standings.length * 0.12 }}
+            className="mt-3 flex items-center gap-2.5 rounded-xl bg-ink/40 px-3 py-2.5 ring-1 ring-hanji/10"
+          >
+            <img
+              src="/art/icon-rank.webp"
+              alt=""
+              aria-hidden="true"
+              className="h-6 w-auto shrink-0"
+            />
+            <span className="text-xs text-hanji/55">
+              {rank.placementLeft > 0 ? `배치 대국 ${rank.placementLeft}국 남음` : '등급'}
+            </span>
+            <TierBadge
+              tier={rank.tier}
+              label={rank.label}
+              size={22}
+              className="ml-auto text-sm font-bold text-gold-hi"
+            />
           </motion.div>
         )}
 

@@ -476,7 +476,12 @@ const tierBadges = [
   {
     id: 'badge-tier-yusaeng',
     label: '유생 배지',
-    material: 'plain unpainted paulownia wood, a simple round wooden tag with a single carved line border',
+    // 첫 판은 "plain … wood" 라고만 적었더니 나무판 위에 일월오봉도(해·달·학·범)를
+    // 그려 넣어, 가장 낮은 등급이 제일 화려해졌다. 비워 두라는 말은 명시해야 듣는다.
+    material:
+      'bare unpainted paulownia wood, a plain round wooden tag with one carved groove near the rim; ' +
+      'the wood face is COMPLETELY EMPTY — no painting, no crane, no tiger, no animals, ' +
+      'no landscape, no sun, no moon, no clouds, no flower, nothing drawn on it',
   },
   {
     id: 'badge-tier-jinsa',
@@ -491,8 +496,11 @@ const tierBadges = [
   {
     id: 'badge-tier-jangwon',
     label: '장원 배지',
+    // 첫 판은 가운데 해 원반이 크림색 빈 원으로 나와 미완성처럼 보였다.
     material:
-      'polished gold with red silk cord tassels, an ornate flower-shaped medal with a stylised sun disc',
+      'polished gold, an eight-petal lotus rosette medal with red silk cord tassels hanging below; ' +
+      'the round centre is a SOLID gold disc with a raised radiating sun pattern engraved on it — ' +
+      'the centre must NOT be blank, empty, white or cream',
   },
 ].map((t) => ({
   id: t.id,

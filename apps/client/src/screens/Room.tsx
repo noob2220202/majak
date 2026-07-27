@@ -13,15 +13,16 @@ const WIND_SEAT = ['동', '남', '서', '북'];
 function SeatCard({ member }: { member: RoomMemberView | undefined }) {
   if (!member) {
     return (
-      <div className="grid h-28 place-items-center rounded-xl border border-dashed border-hanji/20 text-hanji/40">
+      <div className="grid h-28 place-items-center rounded-xl border border-dashed border-hanji/25 bg-ink/35 text-hanji/40">
         빈자리
       </div>
     );
   }
+  // 바탕이 비치면 기와 지붕 위에 글씨를 얹은 꼴이라 이름이 안 읽힌다 — 판은 불투명하게
   return (
     <div
       className={`tex-hanji relative grid h-28 place-items-center overflow-hidden rounded-xl p-3 text-center ring-1 ${
-        member.ready ? 'bg-dan-green/20 ring-dan-green/45' : 'bg-hanji/10 ring-hanji/15'
+        member.ready ? 'bg-[#1c3328]/90 ring-dan-green/55' : 'bg-[#1a2030]/85 ring-hanji/15'
       }`}
     >
       <div>

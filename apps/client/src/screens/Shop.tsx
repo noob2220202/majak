@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import type { ShopItem, ShopSlot } from '@cheongiwa/protocol';
 import { Button } from '../components/ui';
 import { ArtBack, ArtCorners, ArtTab, ArtTitle } from '../components/art';
+import { Chip } from '../components/Chip';
 import { DancheongBorder } from '../motifs/Motifs';
 import { getSocket } from '../net/socket';
 import { useGame } from '../store/game';
@@ -186,10 +187,11 @@ export function Shop() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <span className="flex items-center gap-1 rounded-full bg-ink/50 py-1.5 pl-2 pr-2.5 text-xs font-bold text-gold-hi ring-1 ring-gold/25 sm:gap-1.5 sm:pr-3 sm:text-sm">
-              <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-5 sm:size-6" />
-              {(wallet?.balance ?? 0).toLocaleString()}냥
-            </span>
+            {/* 잔액은 로비와 같은 목패 칩 — 화면마다 모양이 다르면 그것부터 따로 논다 */}
+            <Chip title="엽전" className="!px-3 sm:!px-4">
+              <img src="/art/icon-yeopjeon.webp" alt="" aria-hidden="true" className="size-5" />
+              <span className="tabular-nums">{(wallet?.balance ?? 0).toLocaleString()}냥</span>
+            </Chip>
             <ArtBack label="닫기" onClick={() => setShopOpen(false)} />
           </div>
         </div>

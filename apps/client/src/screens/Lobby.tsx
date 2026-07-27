@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button, Panel } from '../components/ui';
+import { Button, LOBBY_TONE, Panel } from '../components/ui';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
 import { AccountPanel } from './AccountPanel';
@@ -8,6 +8,7 @@ import { AuthCard } from './AuthCard';
 import { Scene } from './Scene';
 import { Plaque } from '../components/Plaque';
 import { LobbyHud } from '../components/LobbyHud';
+import { Wordmark } from '../components/Wordmark';
 import { Yeopjeon } from '../motifs/Motifs';
 
 /** 로비에 세울 수 있는 캐릭터. 클릭하면 다음 사람으로 넘어간다 (표시 전용) */
@@ -40,8 +41,7 @@ function RewardFloat() {
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
           // 세로 화면에서는 띄울 빈자리가 없다 — 현판을 가리지 않게 흐름 안에 끼워 넣고,
           // 넓은 화면에서만 좌상단에 띄운다
-          // 명패·현판과 같은 톤으로 — 회색 박스만 혼자 놀지 않게
-          className="pointer-events-auto relative z-20 mb-3 w-full max-w-md cursor-pointer rounded-lg border-2 border-gold/50 bg-[#1a2030]/95 p-3 shadow-[0_6px_16px_rgba(0,0,0,0.5)] md:absolute md:left-5 md:top-14 md:mb-0 md:w-56"
+          className={`pointer-events-auto relative z-20 mb-3 w-full max-w-md cursor-pointer rounded-lg p-3 ${LOBBY_TONE} md:absolute md:left-5 md:top-28 md:mb-0 md:w-56`}
           onClick={clearRewards}
         >
           <p className="text-xs font-semibold tracking-wider text-gold" style={{ fontFamily: 'var(--font-serif-kr)' }}>
@@ -74,8 +74,10 @@ function MainMenu() {
 
   if (queue) {
     return (
-      <Panel className="w-full text-center">
-        <p className="text-lg font-semibold text-hanji">빠른 대전 대기 중…</p>
+      <Panel tone="lobby" className="w-full text-center">
+        <p className="text-lg font-bold text-gold-hi" style={{ fontFamily: 'var(--font-serif-kr)' }}>
+          빠른 대전 대기 중…
+        </p>
         <p className="mt-1 text-sm text-hanji/60">
           {Math.floor(queue.waitingMs / 1000)}초 경과 · 대기 {queue.position}번째
         </p>
@@ -123,8 +125,8 @@ function MainMenu() {
           <Plaque tone="slate" index={3} label="연습 대국" sub="봇 3인과 둡니다" onClick={() => send.practice()} />
         </div>
       ) : (
-        <Panel>
-          <label className="text-sm font-semibold text-hanji/80">방 코드 6자리</label>
+        <Panel tone="lobby">
+          <label className="text-sm font-semibold text-gold-hi">방 코드 6자리</label>
           <input
             value={code}
             maxLength={6}
@@ -160,12 +162,11 @@ export function Lobby() {
 
   return (
     <Scene id="lobby" simplified={simplified}>
-      <h1
-        className="pointer-events-none absolute left-6 top-4 z-10 text-2xl font-black tracking-[0.35em] text-hanji drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
-        style={{ fontFamily: 'var(--font-serif-kr)' }}
-      >
-        청기와
-      </h1>
+      <Wordmark
+        as="h1"
+        width="clamp(150px,20vw,260px)"
+        className="pointer-events-none absolute left-4 top-3 z-10 md:left-6 md:top-4"
+      />
 
       {/* 마작상 — 클릭하면 다음 사람으로 바뀐다. 판정에 영향 없는 순수 표시 요소 */}
       {userId && (

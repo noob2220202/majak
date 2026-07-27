@@ -56,7 +56,10 @@ function RecoveryCode({ code }: { code: string }) {
 
   return (
     <div className="rounded-xl bg-gold/12 p-4 ring-1 ring-gold/40">
-      <p className="text-sm font-bold text-gold-hi">복구 코드</p>
+      <p className="flex items-center gap-2 text-sm font-bold text-gold-hi">
+        <img src="/art/icon-recovery-key.webp" alt="" aria-hidden="true" className="h-5 w-auto" />
+        복구 코드
+      </p>
       <p className="mt-1 text-xs leading-relaxed text-hanji/70">
         비밀번호를 잊었을 때 계정을 되찾는 <b className="text-hanji">유일한 수단</b>입니다.
         지금 적어 두세요 — 이 창을 닫으면 다시 볼 수 없습니다.
@@ -313,14 +316,23 @@ export function AccountPanel() {
             className="flex max-h-[88vh] w-full max-w-sm flex-col overflow-y-auto rounded-2xl bg-giwa p-5 ring-1 ring-gold/25"
           >
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2
-                  className="text-xl font-black tracking-widest text-hanji"
-                  style={{ fontFamily: 'var(--font-serif-kr)' }}
-                >
-                  계정
-                </h2>
-                <p className="mt-0.5 text-xs text-hanji/50">{nickname}</p>
+              <div className="flex items-center gap-2.5">
+                {/* 호패 — 신원을 다루는 창이라는 표시 */}
+                <img
+                  src="/art/icon-account.webp"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-11 w-auto shrink-0"
+                />
+                <div>
+                  <h2
+                    className="text-xl font-black tracking-widest text-hanji"
+                    style={{ fontFamily: 'var(--font-serif-kr)' }}
+                  >
+                    계정
+                  </h2>
+                  <p className="mt-0.5 text-xs text-hanji/50">{nickname}</p>
+                </div>
               </div>
               {/* 복구 코드를 띄운 동안에는 닫지 못하게 한다 — 닫으면 다시 못 본다 */}
               {!recoveryCode && <ArtBack label="닫기" onClick={() => setOpen(false)} />}

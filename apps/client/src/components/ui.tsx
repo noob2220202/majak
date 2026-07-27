@@ -25,17 +25,35 @@ export function Button({
   );
 }
 
+/**
+ * 판.
+ *
+ * `lobby` 는 로비 현판·명패와 같은 톤이다 — 남색 판에 금테. 로비에서 현판이 잠깐
+ * 물러나고 대신 뜨는 것들(대기 중·코드 입력·보상 내역)이 회색 상자로 나오면
+ * 그 순간만 화면이 다른 게임처럼 보인다.
+ */
+type PanelTone = 'default' | 'lobby';
+
+/** 판 자체가 아니라 다른 요소에 같은 톤만 입히고 싶을 때 (예: 애니메이션 래퍼) */
+export const LOBBY_TONE =
+  'border-2 border-gold/50 bg-[#1a2030]/95 shadow-[0_8px_20px_rgba(0,0,0,0.5)]';
+
+const PANEL_TONE: Record<PanelTone, string> = {
+  default: 'bg-giwa/80 ring-1 ring-hanji/10 backdrop-blur',
+  lobby: LOBBY_TONE,
+};
+
 export function Panel({
   children,
   className = '',
+  tone = 'default',
 }: {
   children: ReactNode;
   className?: string;
+  tone?: PanelTone;
 }): ReactNode {
   return (
-    <div className={`rounded-xl bg-giwa/80 p-4 ring-1 ring-hanji/10 backdrop-blur ${className}`}>
-      {children}
-    </div>
+    <div className={`rounded-xl p-4 ${PANEL_TONE[tone]} ${className}`}>{children}</div>
   );
 }
 
@@ -99,22 +117,5 @@ export function SealButton({
         {label}
       </span>
     </button>
-  );
-}
-
-export function ConnectionBadge({ status }: { status: string }): ReactNode {
-  const dot =
-    status === 'connected'
-      ? 'bg-dan-green'
-      : status === 'connecting'
-        ? 'bg-gold animate-pulse'
-        : 'bg-dan-red';
-  const label =
-    status === 'connected' ? '서버 연결됨' : status === 'connecting' ? '연결 중' : '연결 끊김';
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-hanji/60">
-      <span className={`size-2 rounded-full ${dot}`} aria-hidden="true" />
-      {label}
-    </span>
   );
 }

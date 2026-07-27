@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { send } from '../net/socket';
 import { useGame } from '../store/game';
 import { unlockAudio } from '../audio/sfx';
-import { Sumaksae } from '../motifs/Motifs';
+import { Wordmark } from '../components/Wordmark';
 
 /**
  * 첫 화면 (PLAN.md §3.1).
@@ -134,15 +134,10 @@ export function AuthCard() {
       transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
       className="tex-hanji relative w-full max-w-sm rounded-xl bg-hanji p-6 text-ink shadow-2xl ring-1 ring-gold/30 sm:p-8"
     >
-      <div className="mb-2 flex justify-center">
-        <Sumaksae size={46} color="var(--giwa)" opacity={0.85} />
+      {/* 제호는 로비 좌상단과 같은 현판 원화를 쓴다 — 첫 화면과 로비가 이어져 보이게 */}
+      <div className="flex justify-center">
+        <Wordmark width="min(260px,72%)" />
       </div>
-      <h2
-        className="text-center text-4xl font-black tracking-widest"
-        style={{ fontFamily: 'var(--font-serif-kr)' }}
-      >
-        청기와
-      </h2>
       <p className="mt-2 text-center text-sm text-ink/60">한국 전통 온라인 리치마작</p>
 
       <div className="mt-6 flex rounded-lg bg-giwa/10 p-1">

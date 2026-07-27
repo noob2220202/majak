@@ -537,6 +537,63 @@ const extraIcons = [
   prompt: `a single game UI icon, ${i.subject}, ${STYLE_OBJECT}, transparent background`,
 }));
 
+/**
+ * 로비 개편분 (stage 6).
+ *
+ * 앞서 현판 4장을 **각각 다른 모티프**로 지시했다 — 구름+금박 / 초롱 / 잉어+학 / 연화문.
+ * 넷이 서로 안 붙는 게 당연했다. 통일감은 프롬프트에 "통일"이라고 적어서 나오는 게
+ * 아니라 **같은 그림을 재사용해야** 나온다. 그래서 프레임은 한 장만 뽑고 4번 쓴다.
+ * 항목마다 다른 것은 패널 색조와 글자뿐이다.
+ */
+const lobbyParts = [
+  {
+    id: 'plaque-menu',
+    file: 'plaque-menu.png',
+    group: 'UI',
+    stage: 6,
+    gen: '1536x1024',
+    out: [1200, 380],
+    alpha: true,
+    format: 'png',
+    prompt:
+      'a single Korean traditional hanging signboard (hyeonpan), horizontal, seen straight on and ' +
+      'perfectly symmetrical, a narrow row of grey curved giwa roof tiles capping the top edge, ' +
+      'dark walnut wood frame with slim gold dancheong scrollwork only at the four corners, ' +
+      'the large inner panel is COMPLETELY EMPTY, FLAT and evenly lit so text can be placed on it later, ' +
+      'no ornaments or creatures inside the panel, no hanging tassels, no lanterns, ' +
+      `${STYLE_OBJECT}, transparent background`,
+  },
+  {
+    id: 'panel-profile',
+    file: 'panel-profile.png',
+    group: 'UI',
+    stage: 6,
+    gen: '1536x1024',
+    out: [1200, 240],
+    alpha: true,
+    format: 'png',
+    prompt:
+      'a long horizontal Korean wooden nameplate bar, dark walnut with slim brass end fittings and ' +
+      'a thin gold rim, the whole inner surface is COMPLETELY EMPTY and FLAT, ' +
+      'no ornaments inside, no text, seen straight on, ' +
+      `${STYLE_OBJECT}, transparent background`,
+  },
+  {
+    id: 'chip-slot',
+    file: 'chip-slot.png',
+    group: 'UI',
+    stage: 6,
+    gen: '1536x1024',
+    out: [420, 160],
+    alpha: true,
+    format: 'png',
+    prompt:
+      'a small empty pill-shaped Korean lacquered tag, dark indigo with a thin gold rim and tiny ' +
+      'lotus studs at both ends, the inside is COMPLETELY EMPTY and FLAT, seen straight on, ' +
+      `${STYLE_OBJECT}, transparent background`,
+  },
+];
+
 /** 남은 로고 — 워드마크는 파비콘·헤더에 쓴다 */
 const extraLogos = [
   {
@@ -564,5 +621,6 @@ export const MANIFEST = [
   ...logos,
   ...tierBadges,
   ...extraIcons,
+  ...lobbyParts,
   ...extraLogos,
 ];

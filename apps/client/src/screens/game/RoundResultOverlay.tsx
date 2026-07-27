@@ -31,7 +31,7 @@ function WinCard({
 }) {
   const isYakuman = win.yakuman.length > 0;
   return (
-    <div className="rounded-xl bg-ink/60 p-3 ring-1 ring-hanji/10">
+    <div className="rounded-xl bg-ink/55 p-3 ring-1 ring-gold/20">
       <div className="mb-2 flex items-center gap-2">
         <span className="font-semibold text-hanji">{seatName(game, win.seat)}</span>
         <span className="text-xs text-hanji/60">
@@ -150,7 +150,10 @@ export function RoundResultOverlay({
         initial={{ scale: simplified ? 1 : 0.94, y: simplified ? 0 : 10 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ duration: simplified ? 0.05 : 0.3, ease: [0.2, 0.8, 0.2, 1] }}
-        className="tex-hanji relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-giwa p-4 ring-1 ring-gold/25"
+        // 최종 결과와 같은 남색 판으로 맞춘다 — 국 결과만 회색 한지 카드라
+        // 두 결과 화면이 다른 게임처럼 보였다
+        className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border-2 border-gold/40 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6)]"
+        style={{ background: 'linear-gradient(160deg, #2c3040 0%, #1e2436 100%)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl">
@@ -160,7 +163,7 @@ export function RoundResultOverlay({
         {result.type === 'win' && (
           <div className="flex flex-col gap-3 pt-2">
             <h2
-              className={`text-center text-3xl font-black tracking-widest text-hanji ${simplified ? '' : 'anim-brush'}`}
+              className={`text-center text-3xl font-black tracking-widest text-gold-hi ${simplified ? '' : 'anim-brush'}`}
               style={{ fontFamily: 'var(--font-serif-kr)' }}
             >
               화료
@@ -174,7 +177,7 @@ export function RoundResultOverlay({
         {result.type === 'exhaustive' && (
           <div>
             <h2
-              className={`mb-3 pt-2 text-center text-3xl font-black tracking-widest text-hanji/85 ${simplified ? '' : 'anim-brush'}`}
+              className={`mb-3 pt-2 text-center text-3xl font-black tracking-widest text-gold-hi/85 ${simplified ? '' : 'anim-brush'}`}
               style={{ fontFamily: 'var(--font-serif-kr)' }}
             >
               황패유국
@@ -208,7 +211,7 @@ export function RoundResultOverlay({
         {result.type === 'abortive' && (
           <div>
             <h2
-              className={`pt-2 text-center text-3xl font-black tracking-widest text-hanji/85 ${simplified ? '' : 'anim-brush'}`}
+              className={`pt-2 text-center text-3xl font-black tracking-widest text-gold-hi/85 ${simplified ? '' : 'anim-brush'}`}
               style={{ fontFamily: 'var(--font-serif-kr)' }}
             >
               도중유국

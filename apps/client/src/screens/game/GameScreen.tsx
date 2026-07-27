@@ -17,6 +17,10 @@ import { RoundResultOverlay } from './RoundResultOverlay';
 import { SidePanel } from './SidePanel';
 import { WaitsStrip } from './WaitsStrip';
 
+/** 상단 좌·우 덩어리 — 로비 현판과 같은 남색+금테 */
+const TOP_PILL =
+  'flex items-center gap-2 rounded-full border border-gold/35 bg-[#141a28]/85 px-2.5 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.5)]';
+
 export function GameScreen() {
   const game = useGame((s) => s.game);
   const gameEnd = useGame((s) => s.gameEnd);
@@ -107,26 +111,31 @@ export function GameScreen() {
         backgroundColor: '#080d1e',
       }}
     >
-      {/* 상단 바 */}
-      <div className="mx-auto mb-2 flex w-full max-w-6xl shrink-0 items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ArtIconButton icon="icon-game-sync" label="동기화" size={34} onClick={() => send.syncRequest()} />
+      {/* 상단 바 — 단추가 배경 위에 그냥 떠 있으면 화면에 속하지 않은 것처럼 보인다.
+          로비 현판과 같은 남색+금테를 입히되, 화면 폭만큼 늘린 빈 캡슐이 되지 않게
+          내용만큼만 감싸는 두 덩어리로 나눈다 */}
+      <div className="mx-auto mb-2 flex w-full max-w-6xl shrink-0 items-start justify-between gap-2">
+        <div className={TOP_PILL}>
+          <ArtIconButton
+            icon="icon-game-sync"
+            label="동기화"
+            size={30}
+            onClick={() => send.syncRequest()}
+          />
           {connection !== 'connected' && (
-            <span className="rounded bg-dan-red/30 px-2 py-1 text-xs text-hanji">
-              재연결 중…
-            </span>
+            <span className="rounded bg-dan-red/40 px-2 py-1 text-xs text-hanji">재연결 중…</span>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden text-xs text-hanji/40 sm:inline">
-            시드 {game.seedHash.slice(0, 10)}…
+        <div className={TOP_PILL}>
+          <span className="hidden px-1 text-xs text-hanji/40 sm:inline" title="공정성 증명 시드">
+            {game.seedHash.slice(0, 8)}…
           </span>
           <EmoteBar />
           {/* 사이드 패널이 접히는 폭에서만 나오는 서랍 손잡이 */}
           <ArtIconButton
             icon="icon-game-settings"
             label="설정"
-            size={34}
+            size={30}
             className="lg:hidden"
             onClick={() => setPanelOpen(true)}
           />

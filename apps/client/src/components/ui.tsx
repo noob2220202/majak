@@ -59,7 +59,11 @@ export function Panel({
 
 /**
  * 낙관 도장 콜 버튼 (§4.3) — 인주색 사각 도장에 한지색 전각 글자.
- * 등장 시 "쾅" 찍히는 모션(scale 1.35→1) + 잉크 번짐. 가장 기억에 남을 인터랙션.
+ * 등장 시 "쾅" 찍히는 모션(scale 1.35→1). 가장 기억에 남을 인터랙션.
+ *
+ * 도장 면은 원화(`stamp-seal`)다. 그라디언트로 그렸을 때는 그냥 빨간 네모였는데,
+ * 원화에는 단청 테두리와 손으로 찍은 듯 고르지 않은 가장자리가 있다.
+ * 글자는 CSS 가 얹으므로 론·퐁·치·깡이 전부 이 한 장을 쓴다.
  */
 export function SealButton({
   label,
@@ -89,31 +93,21 @@ export function SealButton({
         style={{
           animationDelay: simplified ? undefined : `${delay}ms`,
           borderRadius: 9,
-          background: isPass
-            ? 'rgba(244,237,221,0.1)'
-            : 'radial-gradient(circle at 32% 26%, #d1544a 0%, #c03b2e 45%, #98241c 100%)',
+          // `background` 단축 속성을 섞으면 안 된다 — React 는 값이 undefined 인 속성에
+          // 빈 문자열을 넣는데, 단축 속성에 빈 값이 들어가면 앞서 지정한 background-image
+          // 까지 같이 지워진다. 실제로 도장이 통째로 안 보였다. 전부 개별 속성으로 쓴다.
+          backgroundImage: isPass ? 'none' : 'url(/art/stamp-seal.webp)',
+          backgroundSize: '100% 100%',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: isPass ? 'rgba(244,237,221,0.1)' : 'transparent',
           color: 'var(--hanji)',
-          border: isPass ? '1px solid rgba(244,237,221,0.3)' : '2px solid rgba(255,214,204,0.4)',
-          boxShadow: isPass
-            ? 'none'
-            : '0 3px 10px rgba(0,0,0,0.45), 0 0 0 3px rgba(192,59,46,0.18), inset 0 1px 0 rgba(255,255,255,0.2)',
+          border: isPass ? '1px solid rgba(244,237,221,0.3)' : undefined,
+          filter: isPass ? undefined : 'drop-shadow(0 3px 10px rgba(0,0,0,0.5))',
           fontSize: label.length > 2 ? 19 : 27,
           fontFamily: 'var(--font-serif-kr)',
-          textShadow: isPass ? 'none' : '0 1px 2px rgba(0,0,0,0.4)',
+          textShadow: isPass ? 'none' : '0 2px 4px rgba(90,10,5,0.75)',
         }}
       >
-        {!isPass && (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-30"
-            style={{
-              borderRadius: 9,
-              background:
-                'radial-gradient(circle at 78% 82%, rgba(0,0,0,0.35) 0%, transparent 42%), radial-gradient(circle at 14% 74%, rgba(0,0,0,0.28) 0%, transparent 38%)',
-              mixBlendMode: 'multiply',
-            }}
-          />
-        )}
         {label}
       </span>
     </button>

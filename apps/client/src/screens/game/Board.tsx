@@ -49,6 +49,12 @@ const centered = (extra = ''): string =>
 const BOARD_SIZE = 600;
 /** 세로가 짧은 화면(가로로 눕힌 폰)에서 판이 너무 쪼그라들지 않게 하는 하한 */
 const BOARD_MIN = 170;
+/**
+ * 확대 상한. 600px 에 묶어 뒀더니 큰 화면에서 상 둘레가 통째로 비었다 —
+ * 자리는 남는데 안 쓰는 셈이라 남는 만큼 키운다. 상한이 없으면 27인치에서
+ * 상만 커지고 이름표·패가 같이 커져 오히려 읽기 나빠진다.
+ */
+const BOARD_MAX = 820;
 
 export function Board({
   game,
@@ -67,7 +73,7 @@ export function Board({
   // 폭만 보고 맞추면 판이 화면 아래로 흘러넘친다.
   const { ref, width, height } = useElementSize<HTMLDivElement>();
   const measured = Math.min(width || BOARD_SIZE, height || BOARD_SIZE);
-  const side = Math.min(BOARD_SIZE, Math.max(BOARD_MIN, measured));
+  const side = Math.min(BOARD_MAX, Math.max(BOARD_MIN, measured));
   const scale = side / BOARD_SIZE;
 
   return (
@@ -94,6 +100,17 @@ export function Board({
             boxShadow: 'inset 0 0 70px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(200,162,75,0.18)',
           }}
         >
+          {/* 천장 등불 — 상 한가운데가 밝고 가장자리로 갈수록 어두워진다.
+              깔개 색은 코스메틱이라 바뀌므로 빛은 별도 레이어로 얹는다.
+              뒤에 깔 뿐이라 뒤 요소들과 겹칠 일이 없다(형제 중 첫 자식) */}
+          <img
+            src="/art/table-light.webp"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-[38%] w-[86%] -translate-x-1/2 -translate-y-1/2 opacity-45"
+            style={{ mixBlendMode: 'screen' }}
+          />
+
           {/* 중앙 정보판 */}
           <div className={centered()} style={{ left: '50%', top: '50%' }}>
             <CenterPanel round={game.round} />

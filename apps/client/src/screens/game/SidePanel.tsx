@@ -1,8 +1,47 @@
 import { useState } from 'react';
+import { ArtTab } from '../../components/art';
+import { LOBBY_TONE } from '../../components/ui';
 import { useGame } from '../../store/game';
 import { YAKU_LIST } from './yakuList';
 
 type Tab = 'settings' | 'yaku' | 'log';
+
+/**
+ * 대국 우측 기둥 (설정·역 일람·기록).
+ *
+ * 회색 판에 초록 iOS 스위치라 로비와 전혀 다른 물건처럼 보였다. 판은 로비 현판과
+ * 같은 남색+금테, 탭은 저잣거리와 같은 원화 탭, 스위치는 팔레트 안의 금색으로 맞췄다.
+ */
+
+/**
+ * 구역 사이 금박 실선.
+ *
+ * `divider` 원화를 써 보려 했는데 720×14 짜리 띠 가운데에만 문양이 있어, 폭에 맞춰
+ * 늘리면 그 문양만 커지고 선은 안 그어졌다. 실선은 CSS 로 긋는 게 맞다.
+ */
+function Divider() {
+  return (
+    <span
+      aria-hidden="true"
+      className="my-1.5 block h-px w-full"
+      style={{
+        background:
+          'linear-gradient(90deg, transparent 0%, rgba(200,162,75,0.55) 20%, rgba(200,162,75,0.55) 80%, transparent 100%)',
+      }}
+    />
+  );
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <p
+      className="mt-1 text-[11px] font-bold tracking-[0.2em] text-gold/80"
+      style={{ fontFamily: 'var(--font-serif-kr)' }}
+    >
+      {children}
+    </p>
+  );
+}
 
 function AutoToggleRow({
   label,
@@ -16,13 +55,24 @@ function AutoToggleRow({
   return (
     <button
       onClick={() => onChange(!value)}
-      className="flex w-full items-center justify-between rounded-lg bg-hanji/5 px-3 py-2 text-sm text-hanji/85"
+      aria-pressed={value}
+      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+        value
+          ? 'bg-gold/15 text-hanji ring-1 ring-gold/40'
+          : 'bg-ink/40 text-hanji/70 ring-1 ring-hanji/10 hover:bg-ink/25'
+      }`}
     >
       <span>{label}</span>
       <span
-        className={`ml-3 inline-block h-5 w-9 rounded-full p-0.5 transition ${value ? 'bg-dan-green' : 'bg-hanji/20'}`}
+        className={`ml-3 inline-block h-5 w-9 rounded-full p-0.5 transition ${
+          value ? 'bg-gold' : 'bg-hanji/20'
+        }`}
       >
-        <span className={`block size-4 rounded-full bg-hanji transition ${value ? 'translate-x-4' : ''}`} />
+        <span
+          className={`block size-4 rounded-full transition ${
+            value ? 'translate-x-4 bg-ink' : 'bg-hanji'
+          }`}
+        />
       </span>
     </button>
   );
@@ -40,48 +90,61 @@ export function SidePanel() {
     ['log', '기록'],
   ];
 
-  const filtered = query
-    ? YAKU_LIST.filter((y) => y.name.includes(query))
-    : YAKU_LIST;
+  const filtered = query ? YAKU_LIST.filter((y) => y.name.includes(query)) : YAKU_LIST;
 
   return (
     // 폭은 쓰는 쪽이 정한다 — 데스크톱은 우측 기둥, 좁은 화면은 서랍
-    <div className="flex h-full w-full flex-col rounded-xl bg-giwa/80 ring-1 ring-hanji/10">
-      <div className="flex border-b border-hanji/10">
+    <div className={`flex h-full w-full flex-col rounded-xl ${LOBBY_TONE}`}>
+      <div className="flex items-end gap-0.5 px-1.5 pt-1.5">
         {tabs.map(([t, label]) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 py-2 text-sm font-semibold transition ${
-              tab === t ? 'bg-hanji/10 text-hanji' : 'text-hanji/50 hover:text-hanji/80'
-            }`}
-          >
-            {label}
-          </button>
+          <div key={t} className="min-w-0 flex-1">
+            <ArtTab className="w-full" active={tab === t} onClick={() => setTab(t)}>
+              {label}
+            </ArtTab>
+          </div>
         ))}
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
         {tab === 'settings' && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-hanji/50">자동 편의</p>
-            <AutoToggleRow label="자동 화료" value={auto.autoWin} onChange={(v) => setAuto({ autoWin: v })} />
-            <AutoToggleRow label="울기 스킵" value={auto.autoSkipCalls} onChange={(v) => setAuto({ autoSkipCalls: v })} />
-            <AutoToggleRow label="자동 쯔모기리" value={auto.autoTsumogiri} onChange={(v) => setAuto({ autoTsumogiri: v })} />
-            <p className="mt-3 text-xs text-hanji/50">표시·연출</p>
+            <SectionLabel>자동 편의</SectionLabel>
+            <AutoToggleRow
+              label="자동 화료"
+              value={auto.autoWin}
+              onChange={(v) => setAuto({ autoWin: v })}
+            />
+            <AutoToggleRow
+              label="울기 스킵"
+              value={auto.autoSkipCalls}
+              onChange={(v) => setAuto({ autoSkipCalls: v })}
+            />
+            <AutoToggleRow
+              label="자동 쯔모기리"
+              value={auto.autoTsumogiri}
+              onChange={(v) => setAuto({ autoTsumogiri: v })}
+            />
+
+            <Divider />
+            <SectionLabel>표시·연출</SectionLabel>
             <AutoToggleRow label="유효패 힌트" value={hints} onChange={() => toggleHints()} />
-            <AutoToggleRow label="연출 간소화" value={simplified} onChange={() => toggleSimplified()} />
-            <p className="mt-1 text-[11px] leading-relaxed text-hanji/40">
+            <AutoToggleRow
+              label="연출 간소화"
+              value={simplified}
+              onChange={() => toggleSimplified()}
+            />
+            <p className="text-[11px] leading-relaxed text-hanji/40">
               힌트는 버리면 텐파이가 되는 패를 금색으로 표시합니다. 경기 감각을 원하면 끄세요.
             </p>
 
-            <p className="mt-3 text-xs text-hanji/50">소리</p>
+            <Divider />
+            <SectionLabel>소리</SectionLabel>
             <AutoToggleRow
               label="음소거"
               value={sound.muted}
               onChange={(v) => setSound({ muted: v })}
             />
-            <label className="flex items-center gap-2 rounded-lg bg-hanji/5 px-3 py-2 text-sm text-hanji/85">
+            <label className="flex items-center gap-2 rounded-lg bg-ink/40 px-3 py-2 text-sm text-hanji/85 ring-1 ring-hanji/10">
               <span className="shrink-0">볼륨</span>
               <input
                 type="range"
@@ -106,7 +169,7 @@ export function SidePanel() {
             />
             <ul className="flex flex-col gap-1">
               {filtered.map((y) => (
-                <li key={y.name} className="rounded-md bg-hanji/5 px-2.5 py-1.5">
+                <li key={y.name} className="rounded-md bg-ink/40 px-2.5 py-1.5 ring-1 ring-hanji/10">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-sm text-hanji">{y.name}</span>
                     <span className="shrink-0 text-xs text-gold-hi">{y.han}</span>

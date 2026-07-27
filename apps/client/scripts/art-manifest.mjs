@@ -602,6 +602,53 @@ const lobbyParts = [
   },
 ];
 
+/**
+ * 대국 화면 조각.
+ *
+ * 이 화면에 필요한 것은 대부분 이미 뽑혀 있었다(`nameplate`·`table-center`·
+ * `table-light`·점수봉·리치봉·SD 캐릭터). 정말 없던 것은 둘뿐이다 —
+ * 손패가 얹힐 받침과, 콜 버튼에 찍히는 빈 낙관.
+ */
+const gameParts = [
+  {
+    id: 'panel-hand-rest',
+    file: 'panel-hand-rest.png',
+    group: 'UI',
+    stage: 7,
+    gen: '1536x1024',
+    out: [1400, 190],
+    alpha: true,
+    format: 'png',
+    // 손패 14장이 얹히는 자리다. 위쪽 턱이 있으면 패가 가려지므로 낮게,
+    // 가로로 늘려 쓸 것이므로 가운데는 결만 있는 평평한 나무여야 한다.
+    prompt:
+      'a long low horizontal wooden mahjong tile rack seen straight on from the front, ' +
+      'dark walnut with visible grain, a shallow flat ledge along the top edge and a thin gold ' +
+      'rim line, small red-and-gold dancheong fittings capping the two short ends only, ' +
+      'the long middle section is plain flat wood grain with nothing on it, ' +
+      'no tiles resting on it, no legs, no tall back wall, ' +
+      `${STYLE_OBJECT}, transparent background`,
+  },
+  {
+    id: 'stamp-seal',
+    file: 'stamp-seal.png',
+    group: 'UI',
+    stage: 7,
+    gen: '1024x1024',
+    out: [256, 256],
+    alpha: true,
+    format: 'png',
+    // 글자는 CSS가 얹는다 — 론·퐁·치·깡이 다 이 한 장을 쓰므로 면이 비어 있어야 한다.
+    prompt:
+      'a single square Korean carved stone name seal (nakgwan) pressed face-up, seen straight on, ' +
+      'the square face is a solid even vermilion cinnabar ink pad red with a slightly uneven ' +
+      'hand-pressed edge, a thin darker carved border just inside the edge, ' +
+      'the face is COMPLETELY EMPTY — no characters, no letters, no carving inside the border, ' +
+      'no handle, no stone body, just the pressed square face, ' +
+      `${STYLE_OBJECT}, transparent background`,
+  },
+];
+
 /** 남은 로고 — 워드마크는 파비콘·헤더에 쓴다 */
 const extraLogos = [
   {
@@ -630,5 +677,6 @@ export const MANIFEST = [
   ...tierBadges,
   ...extraIcons,
   ...lobbyParts,
+  ...gameParts,
   ...extraLogos,
 ];

@@ -178,17 +178,20 @@ export function ArtTab({
   children,
   active,
   onClick,
+  /** 좁은 기둥(대국 사이드 패널)에서는 `w-full` 로 덮어써 칸을 나눠 갖는다 */
+  className = 'w-[clamp(78px,11vw,124px)]',
 }: {
   children: ReactNode;
   active: boolean;
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="group block w-[clamp(78px,11vw,124px)] transition"
+      className={`group block transition ${className}`}
     >
       <Surface
         src={active ? '/art/tab-on.webp' : '/art/tab-off.webp'}
